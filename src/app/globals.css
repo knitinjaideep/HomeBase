@@ -1,0 +1,165 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light theme — warm, calm, paper-like. RGB triplets for rgb(var(--x) / a). */
+  --canvas: 249 248 245;
+  --surface: 255 255 255;
+  --surface-muted: 244 242 238;
+  --line: 228 224 217;
+  --ink: 31 36 33;
+  --ink-muted: 91 97 92;
+  --ink-subtle: 138 143 137;
+  --accent: 41 104 96;
+  --accent-soft: 224 237 233;
+  --positive: 47 122 84;
+  --caution: 158 106 24;
+  --critical: 168 68 51;
+}
+
+.dark {
+  --canvas: 18 21 23;
+  --surface: 27 31 35;
+  --surface-muted: 34 39 44;
+  --line: 48 54 61;
+  --ink: 231 233 230;
+  --ink-muted: 164 170 165;
+  --ink-subtle: 118 124 119;
+  --accent: 122 189 178;
+  --accent-soft: 32 48 46;
+  --positive: 110 190 140;
+  --caution: 214 170 96;
+  --critical: 224 138 120;
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: rgb(var(--canvas));
+  color: rgb(var(--ink));
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+/* Headings share one calm, modern sans — weight and spacing carry hierarchy. */
+.font-display {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+/* Accessible focus ring on every interactive element. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Respect reduced motion globally. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes hs-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes hs-scale-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  @keyframes hs-slide-in-right {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+  @keyframes hs-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fade-in {
+    animation: hs-fade-in 0.18s ease-out;
+  }
+  .animate-scale-in {
+    animation: hs-scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .animate-slide-in-right {
+    animation: hs-slide-in-right 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .animate-rise {
+    animation: hs-rise 0.2s ease-out;
+  }
+  .animate-toast {
+    animation: hs-rise 0.2s ease-out;
+  }
+}
+
+/* Text inputs share a calm baseline. */
+.hs-input {
+  width: 100%;
+  background-color: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+  color: rgb(var(--ink));
+  min-height: 2.5rem;
+}
+.hs-input::placeholder {
+  color: rgb(var(--ink-subtle));
+}
+.hs-input:focus {
+  border-color: rgb(var(--accent));
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(var(--accent) / 0.15);
+}
+
+/* Custom scrollbar for horizontal scroll areas stays unobtrusive. */
+.hs-scroll {
+  scrollbar-width: thin;
+}
+
+/* Print: hide chrome, show only the report content. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .print-block {
+    break-inside: avoid;
+  }
+}
