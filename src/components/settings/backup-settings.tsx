@@ -1,19 +1,21 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { getDb } from "@/lib/db";
+import { createClient } from "@/lib/supabase/client";
+import { useHouseholdContext } from "@/lib/household/context";
 import {
-  exportAll,
+  exportAllFromCloud,
   hasSnapshot,
+  importBackupToCloud,
   parseBackup,
   readSnapshot,
-  replaceAllData,
-  snapshotBeforeImport,
+  snapshotCloudBeforeImport,
   summarizeBackup,
 } from "@/lib/backup";
-import { removeSampleProperties, updateSettings } from "@/lib/repo";
+import { removeSampleProperties } from "@/lib/repo";
 import { dateLabel } from "@/lib/format";
 import { useSettings } from "@/lib/hooks";
+import { useTheme } from "@/lib/theme";
 import { Button, Callout, Field, Panel, Select } from "@/components/ui";
 import { ConfirmDialog } from "@/components/modal";
 import { useToast } from "@/components/toast";
@@ -21,7 +23,9 @@ import type { Backup } from "@/lib/models";
 
 export function BackupSettings() {
   const settings = useSettings();
+  const { householdId } = useHouseholdContext();
   const { notify } = useToast();
+  const [theme, setTheme] = useTheme();
   const fileInput = useRef<HTMLInputElement>(null);
 
   const [pending, setPending] = useState<Backup | null>(null);
@@ -43,11 +47,15 @@ export function BackupSettings() {
   const doImport = async () => {
     if (!pending) return;
     setBusy(true);
+    setImportError(null);
     try {
-      await snapshotBeforeImport(getDb());
-      await replaceAllData(getDb(), pending);
+      const supabase = createClient();
+      await snapshotCloudBeforeImport(supabase, householdId);
+      await importBackupToCloud(supabase, householdId, pending);
       notify("Data imported");
       setPending(null);
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : "Import failed. Nothing was changed — try again.");
     } finally {
       setBusy(false);
     }
@@ -58,8 +66,10 @@ export function BackupSettings() {
     if (!snap) return;
     setBusy(true);
     try {
-      await replaceAllData(getDb(), snap);
+      await importBackupToCloud(createClient(), householdId, snap);
       notify("Pre-import snapshot restored");
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Could not restore the snapshot");
     } finally {
       setBusy(false);
     }
@@ -69,15 +79,10 @@ export function BackupSettings() {
     <Panel className="p-5 sm:p-6">
       <h2 className="mb-2 font-display text-lg text-ink">Data & backups</h2>
       <p className="mb-4 text-sm text-ink-muted">
-        Everything is stored only in this browser. Export a JSON backup regularly — it is your only
-        copy. Nothing is uploaded anywhere.
+        Your household&rsquo;s data lives in Supabase, shared across every device you sign in on.
+        Export a JSON backup regularly anyway — it&rsquo;s your own independent copy, outside any
+        single service.
       </p>
-
-      <Callout tone="caution" className="mb-5">
-        Browser storage is not a guaranteed-safe place. Clearing site data, some private-browsing
-        modes, or moving to another device or browser will lose this data. Keep exported backups
-        somewhere safe.
-      </Callout>
 
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
@@ -90,7 +95,7 @@ export function BackupSettings() {
           <Button
             variant="secondary"
             onClick={async () => {
-              await exportAll(getDb());
+              await exportAllFromCloud(createClient(), householdId);
               notify("Backup exported");
             }}
           >
@@ -101,7 +106,7 @@ export function BackupSettings() {
         <div>
           <h3 className="mb-1 text-sm font-medium text-ink">Import</h3>
           <p className="mb-2 text-xs text-ink-subtle">
-            Validated before anything is replaced. A local snapshot is taken automatically first.
+            Validated before anything is replaced. A cloud snapshot is taken automatically first.
           </p>
           <input
             ref={fileInput}
@@ -137,13 +142,8 @@ export function BackupSettings() {
       <div className="mt-6 grid gap-6 border-t border-line pt-6 sm:grid-cols-2">
         <div>
           <h3 className="mb-1 text-sm font-medium text-ink">Appearance</h3>
-          <Field label="Theme" className="max-w-[12rem]">
-            <Select
-              value={settings?.theme ?? "system"}
-              onChange={(e) =>
-                updateSettings({ theme: e.target.value as "light" | "dark" | "system" })
-              }
-            >
+          <Field label="Theme" className="max-w-[12rem]" hint="Applies only to this device.">
+            <Select value={theme} onChange={(e) => setTheme(e.target.value as "light" | "dark" | "system")}>
               <option value="system">System</option>
               <option value="light">Light</option>
               <option value="dark">Dark</option>
@@ -174,9 +174,9 @@ export function BackupSettings() {
           pending && (
             <div className="space-y-3">
               <p>
-                This <strong>replaces</strong> everything currently in this browser with the contents
-                of the file (exported {dateLabel(pending.exportedAt)}). A local snapshot is saved
-                first so you can roll back.
+                This <strong>replaces</strong> everything in your household&rsquo;s cloud database with
+                the contents of the file (exported {dateLabel(pending.exportedAt)}). A cloud snapshot is
+                saved first so you can roll back.
               </p>
               <ul className="grid grid-cols-2 gap-1 rounded-lg bg-surface-muted p-3 text-sm">
                 {summarizeBackup(pending.data).map((s) => (

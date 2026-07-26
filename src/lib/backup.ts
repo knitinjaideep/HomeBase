@@ -1,7 +1,16 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { HomeScopeDB } from "./db";
 import { backupSchema, CURRENT_SCHEMA_VERSION, type Backup, type BackupData } from "./models";
 
 const SNAPSHOT_KEY = "homescope:pre-import-snapshot";
+
+/**
+ * Everything below this point reads/writes the *legacy local Dexie store*.
+ * That store is no longer written to by the live app (Supabase is
+ * authoritative) — it is kept only so the one-time local-data migration can
+ * read whatever a browser already has. See `collectBackupFromSupabase` /
+ * `importBackupToCloud` further down for the live, cloud-backed path.
+ */
 
 /** Every table in the database, in one place so backup stays exhaustive. */
 function allTables(db: HomeScopeDB) {
@@ -216,7 +225,7 @@ export function readSnapshot(): Backup | null {
   }
 }
 
-/** Replace all data in the database with the contents of a validated backup. */
+/** Replace all data in the legacy local database with the contents of a validated backup. */
 export async function replaceAllData(db: HomeScopeDB, backup: Backup): Promise<void> {
   const d = backup.data;
   await db.transaction("rw", allTables(db), async () => {
@@ -244,4 +253,99 @@ export async function replaceAllData(db: HomeScopeDB, backup: Backup): Promise<v
       db.deals.bulkPut(d.deals),
     ]);
   });
+}
+
+// ---------------------------------------------------------------------------
+// Cloud (Supabase) — the live backup path. Settings → Data → Export backup
+// and the one-time local-data migration both go through these.
+// ---------------------------------------------------------------------------
+
+/** Maps each backup envelope key to its Postgres table name. */
+const CLOUD_TABLES: Record<keyof BackupData, string> = {
+  householdProfile: "buyerProfile",
+  financialProfile: "financialProfile",
+  homePreferences: "homePreferences",
+  appSettings: "appSettings",
+  properties: "properties",
+  visits: "propertyVisits",
+  scenarios: "mortgageScenarios",
+  lenderQuotes: "lenderQuotes",
+  checklists: "checklists",
+  tasks: "checklistTasks",
+  towns: "towns",
+  journeyStages: "journeyStages",
+  journeyActions: "journeyActions",
+  journeyDecisions: "journeyDecisions",
+  attendingTransition: "attendingTransition",
+  mortgageApprovals: "mortgageApprovals",
+  professionals: "professionals",
+  resources: "resources",
+  documents: "documents",
+  deals: "deals",
+};
+
+/** Read the household's entire Supabase database into a validated backup envelope. */
+export async function collectBackupFromSupabase(
+  supabase: SupabaseClient,
+  householdId: string,
+): Promise<Backup> {
+  const entries = Object.entries(CLOUD_TABLES) as [keyof BackupData, string][];
+  const results = await Promise.all(
+    entries.map(([, table]) => supabase.from(table).select("*").eq("householdId", householdId)),
+  );
+
+  const data = {} as BackupData;
+  entries.forEach(([key], i) => {
+    const { data: rows, error } = results[i];
+    if (error) throw new Error(`Could not read ${key}: ${error.message}`);
+    (data as Record<string, unknown>)[key] = rows ?? [];
+  });
+
+  return backupSchema.parse({
+    app: "HomeScope",
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    data,
+  });
+}
+
+/** Export the household's cloud data and mark the backup timestamp. */
+export async function exportAllFromCloud(supabase: SupabaseClient, householdId: string): Promise<void> {
+  const backup = await collectBackupFromSupabase(supabase, householdId);
+  downloadJson(backupFileName(), backup);
+  const { updateSettings } = await import("./repo");
+  await updateSettings({ lastBackupAt: new Date().toISOString() });
+}
+
+/** Save the current cloud state to localStorage as an automatic pre-import snapshot. */
+export async function snapshotCloudBeforeImport(
+  supabase: SupabaseClient,
+  householdId: string,
+): Promise<void> {
+  const backup = await collectBackupFromSupabase(supabase, householdId);
+  try {
+    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(backup));
+  } catch {
+    // localStorage may be unavailable or full; the import UI still warns the user.
+  }
+}
+
+/**
+ * Import a validated backup into the household's cloud database via the
+ * `import_household_backup` Postgres function — one transaction, replaces
+ * whatever the household currently has, returns per-table inserted counts so
+ * the caller can verify against the source counts. Used by both the one-time
+ * local-data migration and Settings → Data → Import a backup file.
+ */
+export async function importBackupToCloud(
+  supabase: SupabaseClient,
+  householdId: string,
+  backup: Backup,
+): Promise<Record<string, number>> {
+  const { data, error } = await supabase.rpc("import_household_backup", {
+    p_household_id: householdId,
+    p_data: backup.data,
+  });
+  if (error) throw new Error(error.message);
+  return data as Record<string, number>;
 }

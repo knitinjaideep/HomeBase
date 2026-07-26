@@ -15,6 +15,8 @@ import {
 } from "@/components/form-fields";
 import { LOAN_TYPE_LABELS } from "@/lib/labels";
 import { useToast } from "@/components/toast";
+import { useSaveStatus } from "@/lib/data/save-status";
+import { SaveIndicator } from "@/components/save-indicator";
 
 export function emptyLenderQuote(): LenderQuote {
   const ts = now();
@@ -35,15 +37,18 @@ export function LenderQuoteForm({
   onDone: () => void;
 }) {
   const { notify } = useToast();
+  const saveStatus = useSaveStatus();
   const defaults = useMemo<LenderQuote>(() => quote ?? emptyLenderQuote(), [quote]);
   const { register, control, handleSubmit, formState } = useForm<LenderQuote>({
     defaultValues: defaults,
   });
 
   const onSubmit = handleSubmit(async (values) => {
-    await saveLenderQuote({ ...defaults, ...values });
-    notify("Quote saved");
-    onDone();
+    const result = await saveStatus.run(() => saveLenderQuote({ ...defaults, ...values }));
+    if (result.ok) {
+      notify("Quote saved");
+      onDone();
+    }
   });
 
   return (
@@ -126,12 +131,13 @@ export function LenderQuoteForm({
         ) : (
           <span />
         )}
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          <SaveIndicator status={saveStatus.status} error={saveStatus.error} onRetry={saveStatus.retry} />
           <Button type="button" variant="secondary" onClick={onDone}>
             Cancel
           </Button>
-          <Button type="submit" disabled={formState.isSubmitting}>
-            {formState.isSubmitting ? "Saving…" : "Save quote"}
+          <Button type="submit" disabled={saveStatus.status === "saving" || formState.isSubmitting}>
+            {saveStatus.status === "saving" ? "Saving…" : "Save quote"}
           </Button>
         </div>
       </div>

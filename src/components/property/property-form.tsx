@@ -20,6 +20,8 @@ import {
   TRAFFIC_LABELS,
 } from "@/lib/labels";
 import { useToast } from "@/components/toast";
+import { useSaveStatus } from "@/lib/data/save-status";
+import { SaveIndicator } from "@/components/save-indicator";
 
 const RATING_FIELDS: { key: keyof Property["ratings"]; label: string }[] = [
   { key: "schoolConfidence", label: "School confidence" },
@@ -54,6 +56,7 @@ export function PropertyForm({
   onDone: () => void;
 }) {
   const { notify } = useToast();
+  const saveStatus = useSaveStatus();
   const defaults = useMemo<Property>(
     () => property ?? newProperty({ address: "" }),
     [property],
@@ -63,14 +66,18 @@ export function PropertyForm({
     register,
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<Property>({ defaultValues: defaults });
 
   const onSubmit = handleSubmit(async (values) => {
     // Merge over the complete defaults so unregistered base fields are preserved.
-    await saveProperty({ ...defaults, ...values });
-    notify("Property saved");
-    onDone();
+    const result = await saveStatus.run(() => saveProperty({ ...defaults, ...values }));
+    if (result.ok) {
+      notify("Property saved");
+      onDone();
+    }
+    // On failure the form stays open with everything the user typed intact —
+    // the SaveIndicator below shows the error and a Retry action.
   });
 
   return (
@@ -217,11 +224,12 @@ export function PropertyForm({
       </FormSection>
 
       <div className="sticky bottom-0 -mx-5 flex items-center justify-end gap-3 border-t border-line bg-surface px-5 py-3 sm:-mx-6 sm:px-6">
+        <SaveIndicator status={saveStatus.status} error={saveStatus.error} onRetry={saveStatus.retry} />
         <Button type="button" variant="secondary" onClick={onDone}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving…" : "Save property"}
+        <Button type="submit" disabled={saveStatus.status === "saving"}>
+          {saveStatus.status === "saving" ? "Saving…" : "Save property"}
         </Button>
       </div>
     </form>

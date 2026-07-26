@@ -113,9 +113,10 @@ export type HomePreferences = z.infer<typeof homePreferencesSchema>;
 
 export const appSettingsSchema = baseEntitySchema.extend({
   schemaVersion: z.number().default(SCHEMA_VERSION),
-  theme: z.enum(["light", "dark", "system"]).default("system"),
   seeded: z.boolean().default(false),
   /** ISO timestamp of the last export, for the backup reminder. */
   lastBackupAt: z.string().nullable().default(null),
 });
+// `theme` deliberately lives in localStorage only (see `lib/theme.ts`), not
+// here — it's a per-device UI preference, not household data to sync.
 export type AppSettings = z.infer<typeof appSettingsSchema>;

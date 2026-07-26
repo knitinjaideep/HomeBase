@@ -1,16 +1,19 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { PropertyVisit } from "@/lib/models";
 import { saveVisit, deleteVisit } from "@/lib/repo";
-import { Button, Field, Input } from "@/components/ui";
+import { Button, Callout, Field, Input } from "@/components/ui";
 import {
   RatingField,
   TextareaField,
   TriToggleField,
 } from "@/components/form-fields";
 import { useToast } from "@/components/toast";
+import { useSaveStatus } from "@/lib/data/save-status";
+import { SaveIndicator } from "@/components/save-indicator";
+import { clearDraft, readDraft, writeDraft } from "@/lib/data/draft";
 
 const SHARED_RATINGS: { key: keyof PropertyVisit; label: string }[] = [
   { key: "firstImpression", label: "First impression" },
@@ -53,19 +56,82 @@ export function VisitForm({
   onSaved?: () => void;
 }) {
   const { notify } = useToast();
+  const saveStatus = useSaveStatus();
   const defaults = useMemo(() => visit, [visit]);
-  const { register, control, handleSubmit, formState } = useForm<PropertyVisit>({
+  const { register, control, handleSubmit, watch, reset, formState } = useForm<PropertyVisit>({
     defaultValues: defaults,
   });
 
+  // Draft protection: poor connectivity should never destroy typed visit
+  // notes. Every change is mirrored to localStorage; the draft is cleared
+  // only after a confirmed successful save.
+  const [restorableDraft, setRestorableDraft] = useState<PropertyVisit | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const draft = readDraft<PropertyVisit>(defaults.id);
+    if (draft && draft.updatedAt > defaults.updatedAt) setRestorableDraft(draft);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaults.id]);
+
+  useEffect(() => {
+    const subscription = watch((values) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        writeDraft(defaults.id, { ...defaults, ...values, updatedAt: new Date().toISOString() });
+      }, 400);
+    });
+    return () => {
+      subscription.unsubscribe();
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [watch, defaults]);
+
   const onSubmit = handleSubmit(async (values) => {
-    await saveVisit({ ...defaults, ...values });
-    notify("Visit notes saved");
-    onSaved?.();
+    const result = await saveStatus.run(() => saveVisit({ ...defaults, ...values }));
+    if (result.ok) {
+      clearDraft(defaults.id);
+      notify("Visit notes saved");
+      onSaved?.();
+    }
+    // On failure everything typed stays in the form AND in the local draft —
+    // nothing is lost.
   });
 
   return (
     <form onSubmit={onSubmit} className="space-y-8 pb-24">
+      {restorableDraft && (
+        <Callout tone="caution">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>Unsaved notes were found from a previous session on this device.</span>
+            <div className="flex shrink-0 gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  reset(restorableDraft);
+                  setRestorableDraft(null);
+                }}
+              >
+                Restore
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  clearDraft(defaults.id);
+                  setRestorableDraft(null);
+                }}
+              >
+                Discard
+              </Button>
+            </div>
+          </div>
+        </Callout>
+      )}
+
       <Field label="Visit date" className="max-w-xs">
         <Input type="date" {...register("visitDate")} />
       </Field>
@@ -139,12 +205,13 @@ export function VisitForm({
       </div>
 
       {/* Sticky save bar */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur sm:px-6">
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur sm:px-6" style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
         <div className="mx-auto flex max-w-content items-center justify-between gap-3">
           <button
             type="button"
             onClick={async () => {
               await deleteVisit(defaults.id);
+              clearDraft(defaults.id);
               notify("Visit deleted");
               onSaved?.();
             }}
@@ -152,9 +219,12 @@ export function VisitForm({
           >
             Delete this visit
           </button>
-          <Button type="submit" disabled={formState.isSubmitting}>
-            {formState.isSubmitting ? "Saving…" : "Save visit notes"}
-          </Button>
+          <div className="flex items-center gap-3">
+            <SaveIndicator status={saveStatus.status} error={saveStatus.error} onRetry={saveStatus.retry} />
+            <Button type="submit" disabled={saveStatus.status === "saving" || formState.isSubmitting}>
+              {saveStatus.status === "saving" ? "Saving…" : "Save visit notes"}
+            </Button>
+          </div>
         </div>
       </div>
     </form>

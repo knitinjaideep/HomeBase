@@ -7,16 +7,19 @@ import { Button, Field, Panel, Textarea } from "@/components/ui";
 import { NumberField, SelectField, TextareaField, ToggleField } from "@/components/form-fields";
 import { RENOVATION_LABELS } from "@/lib/labels";
 import { useToast } from "@/components/toast";
+import { useSaveStatus } from "@/lib/data/save-status";
+import { SaveIndicator } from "@/components/save-indicator";
 
 export function PreferencesSettings({ preferences }: { preferences: HomePreferences }) {
   const { notify } = useToast();
-  const { register, control, handleSubmit, formState } = useForm<HomePreferences>({
+  const saveStatus = useSaveStatus();
+  const { register, control, handleSubmit } = useForm<HomePreferences>({
     defaultValues: preferences,
   });
 
   const onSubmit = handleSubmit(async (values) => {
-    await updatePreferences({ ...preferences, ...values });
-    notify("Preferences saved");
+    const result = await saveStatus.run(() => updatePreferences({ ...preferences, ...values }));
+    if (result.ok) notify("Preferences saved");
   });
 
   return (
@@ -47,8 +50,9 @@ export function PreferencesSettings({ preferences }: { preferences: HomePreferen
           <TextareaField register={register} name="preferredNotes" label="Preferred" rows={2} />
           <TextareaField register={register} name="dealbreakerNotes" label="Deal-breakers" rows={2} />
         </div>
-        <div className="flex justify-end">
-          <Button type="submit" disabled={formState.isSubmitting}>
+        <div className="flex items-center justify-end gap-3">
+          <SaveIndicator status={saveStatus.status} error={saveStatus.error} onRetry={saveStatus.retry} />
+          <Button type="submit" disabled={saveStatus.status === "saving"}>
             Save preferences
           </Button>
         </div>

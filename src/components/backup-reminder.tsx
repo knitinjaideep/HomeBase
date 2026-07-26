@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useSettings } from "@/lib/hooks";
-import { exportAll } from "@/lib/backup";
-import { getDb } from "@/lib/db";
+import { exportAllFromCloud } from "@/lib/backup";
+import { createClient } from "@/lib/supabase/client";
+import { useHouseholdContext } from "@/lib/household/context";
 import { dateLabel } from "@/lib/format";
 import { useToast } from "./toast";
 
@@ -16,6 +17,7 @@ const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000;
  */
 export function BackupReminder() {
   const settings = useSettings();
+  const { householdId } = useHouseholdContext();
   const { notify } = useToast();
   const [dismissed, setDismissed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -29,7 +31,7 @@ export function BackupReminder() {
   const handleExport = async () => {
     setBusy(true);
     try {
-      await exportAll(getDb());
+      await exportAllFromCloud(createClient(), householdId);
       notify("Backup exported");
     } finally {
       setBusy(false);
@@ -41,7 +43,7 @@ export function BackupReminder() {
       <div className="mx-auto flex max-w-content flex-col gap-2 px-4 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p className="text-ink">
           {last === null
-            ? "Your data lives only in this browser. Export a backup to keep it safe."
+            ? "You haven't exported a backup yet. Keep an independent copy just in case."
             : `Last backup ${dateLabel(settings.lastBackupAt)}. A fresh export is a good idea.`}
         </p>
         <div className="flex shrink-0 items-center gap-3">

@@ -7,11 +7,68 @@ import {
   monthlyDebts,
   effectivePrice,
 } from "./property-finance";
-import { seedFinancialProfile, seedHouseholdProfile, seedProperties } from "./seed";
+import { financialProfileSchema, householdProfileSchema, SINGLETON_ID } from "./models";
+import { seedProperties } from "./seed";
 
+/**
+ * Local fixture numbers for these calculation tests — deliberately not
+ * sourced from `seed/profile.ts` (which ships neutral/blank defaults; see
+ * its privacy note) so this suite stays independent of that seed content.
+ */
 const ts = "2026-07-23T00:00:00.000Z";
-const fin = seedFinancialProfile(ts);
-const household = seedHouseholdProfile(ts);
+const fin = financialProfileSchema.parse({
+  id: SINGLETON_ID,
+  createdAt: ts,
+  updatedAt: ts,
+  checking: 15_000,
+  savings: 40_000,
+  taxableInvestments: 250_000,
+  retirementAccounts: 170_000,
+  designatedDownPaymentCash: 36_000,
+  minReserve: 40_000,
+  preferredReserve: 60_000,
+  retirementAvailableForPurchase: 0,
+  vehicleBalanceRemaining: 30_000,
+  carPaymentsAndInsuranceMonthly: 2_000,
+  otherTransportMonthly: 500,
+  studentLoansMonthly: 0,
+  otherDebtMonthly: 0,
+  groceriesMonthly: 750,
+  diningShoppingMonthly: 500,
+  insuranceMonthly: 400,
+  retirementContributionMonthly: 400,
+  espcontributionMonthly: 1_000,
+  childcareMonthly: null,
+  travelMonthly: 0,
+  priceComfortableMin: 1_000_000,
+  priceComfortableMax: 1_150_000,
+  priceRoutineCeiling: 1_200_000,
+  priceAbsoluteCeiling: 1_300_000,
+  paymentComfortable: 8_000,
+  paymentMaxTarget: 9_000,
+  paymentAbsoluteCeiling: 10_000,
+  planningInterestRatePct: 6.5,
+  defaultLoanTermYears: 30,
+  defaultMaintenancePct: 1,
+});
+const household = householdProfileSchema.parse({
+  id: SINGLETON_ID,
+  createdAt: ts,
+  updatedAt: ts,
+  planningDate: ts.slice(0, 10),
+  idealPurchaseStart: "2027-05",
+  idealPurchaseEnd: "2027-06",
+  minOwnershipYears: 10,
+  buyer1Name: "Buyer 1",
+  buyer2Name: "Buyer 2",
+  buyer1Income: { label: "Buyer 1 income", annualBase: 152_000, variableNote: "", isAssumption: false },
+  buyer2Income: { label: "Buyer 2 income", annualBase: 80_000, variableNote: "", isAssumption: false },
+  buyer2FutureIncome: { label: "Future income", annualBase: null, variableNote: "", isAssumption: true },
+  combinedMonthlyTakeHome: 12_000,
+  buyer1CreditScore: 800,
+  buyer2CreditScore: 700,
+  notes: "",
+});
 const [princeton, summit, ridgewood] = seedProperties();
 
 describe("household finance helpers", () => {

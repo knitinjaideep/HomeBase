@@ -20,6 +20,9 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# Supabase CLI local link/cache state (project ref, pooler host, etc.)
+supabase/.temp/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

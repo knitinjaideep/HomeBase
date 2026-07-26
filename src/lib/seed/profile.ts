@@ -7,42 +7,45 @@ import type {
 import { SCHEMA_VERSION, SINGLETON_ID } from "@/lib/models";
 
 /**
- * The household's real, editable planning profile. These are the values from
- * the initial plan; every one of them can be changed in Settings. Forward-looking
- * figures (e.g. the attending salary) are seeded as clearly-labeled assumptions.
+ * A neutral starting planning profile. Every one of these values is a
+ * placeholder meant to be filled in from Settings — none of it is real
+ * financial information. (This file previously seeded real household
+ * figures; that was fine for a strictly local, single-device app, but this
+ * app is now backed by a shared cloud database, so nothing personal may ship
+ * in source code. See the privacy section of the deployment plan.)
  */
 export function seedHouseholdProfile(ts: string): HouseholdProfile {
   return {
     id: SINGLETON_ID,
     createdAt: ts,
     updatedAt: ts,
-    planningDate: "2026-07-23",
-    idealPurchaseStart: "2027-05",
-    idealPurchaseEnd: "2027-06",
+    planningDate: ts.slice(0, 10),
+    idealPurchaseStart: "",
+    idealPurchaseEnd: "",
     minOwnershipYears: 10,
     buyer1Name: "Me",
-    buyer2Name: "Wife",
+    buyer2Name: "Partner",
     buyer1Income: {
-      label: "Buyer 1 base salary",
-      annualBase: 152_000,
-      variableNote: "Plus a variable bonus (not modeled numerically).",
+      label: "Buyer 1 income",
+      annualBase: null,
+      variableNote: "",
       isAssumption: false,
     },
     buyer2Income: {
-      label: "Buyer 2 salary (resident)",
-      annualBase: 80_000,
+      label: "Buyer 2 income",
+      annualBase: null,
       variableNote: "",
       isAssumption: false,
     },
     buyer2FutureIncome: {
-      label: "Buyer 2 future salary (attending physician)",
+      label: "Future income (if applicable)",
       annualBase: null,
-      variableNote: "Expected around June–July 2027. Amount currently unknown.",
+      variableNote: "",
       isAssumption: true,
     },
-    combinedMonthlyTakeHome: 12_000,
-    buyer1CreditScore: 800,
-    buyer2CreditScore: 700,
+    combinedMonthlyTakeHome: null,
+    buyer1CreditScore: null,
+    buyer2CreditScore: null,
     notes: "",
   };
 }
@@ -53,38 +56,38 @@ export function seedFinancialProfile(ts: string): FinancialProfile {
     createdAt: ts,
     updatedAt: ts,
 
-    checking: 15_000,
-    savings: 40_000,
-    taxableInvestments: 250_000,
-    retirementAccounts: 170_000,
-    designatedDownPaymentCash: 36_000,
+    checking: null,
+    savings: null,
+    taxableInvestments: null,
+    retirementAccounts: null,
+    designatedDownPaymentCash: null,
 
-    minReserve: 40_000,
-    preferredReserve: 60_000,
+    minReserve: null,
+    preferredReserve: null,
     retirementAvailableForPurchase: 0,
 
-    vehicleBalanceRemaining: 30_000,
-    carPaymentsAndInsuranceMonthly: 2_000,
-    otherTransportMonthly: 500,
-    studentLoansMonthly: 0,
-    otherDebtMonthly: 0,
+    vehicleBalanceRemaining: null,
+    carPaymentsAndInsuranceMonthly: null,
+    otherTransportMonthly: null,
+    studentLoansMonthly: null,
+    otherDebtMonthly: null,
 
-    groceriesMonthly: 750,
-    diningShoppingMonthly: 500,
-    insuranceMonthly: 400,
-    retirementContributionMonthly: 400,
-    espcontributionMonthly: 1_000,
+    groceriesMonthly: null,
+    diningShoppingMonthly: null,
+    insuranceMonthly: null,
+    retirementContributionMonthly: null,
+    espcontributionMonthly: null,
     childcareMonthly: null, // unknown — editable planning assumption
-    travelMonthly: 0,
+    travelMonthly: null,
 
-    priceComfortableMin: 1_000_000,
-    priceComfortableMax: 1_150_000,
-    priceRoutineCeiling: 1_200_000,
-    priceAbsoluteCeiling: 1_300_000,
+    priceComfortableMin: null,
+    priceComfortableMax: null,
+    priceRoutineCeiling: null,
+    priceAbsoluteCeiling: null,
 
-    paymentComfortable: 8_000,
-    paymentMaxTarget: 9_000,
-    paymentAbsoluteCeiling: 10_000,
+    paymentComfortable: null,
+    paymentMaxTarget: null,
+    paymentAbsoluteCeiling: null,
 
     planningInterestRatePct: 6.5,
     defaultLoanTermYears: 30,
@@ -97,25 +100,15 @@ export function seedHomePreferences(ts: string): HomePreferences {
     id: SINGLETON_ID,
     createdAt: ts,
     updatedAt: ts,
-    primaryTowns: ["Princeton", "Summit", "Ridgewood", "Livingston", "Short Hills"],
+    primaryTowns: [],
     backupTowns: [],
-    minSchoolRating: 8,
-    minBedrooms: 3,
-    minBathrooms: 3,
-    requiredNotes: [
-      "At least 3 bedrooms and 3 bathrooms.",
-      "Strong New Jersey school district.",
-      "Decent backyard, small front yard.",
-      "Train access nearby or practical station parking.",
-      "Commute roughly 90 minutes or less to NYC / Jersey City.",
-    ].join("\n"),
-    preferredNotes: ["Large primary bedroom.", "Large primary closet."].join("\n"),
-    dealbreakerNotes: [
-      "Weak school district.",
-      "Assigned schools below our acceptable threshold.",
-      "A commute that is impractical in reality.",
-    ].join("\n"),
-    maxCommuteMinutes: 90,
+    minSchoolRating: 0,
+    minBedrooms: 0,
+    minBathrooms: 0,
+    requiredNotes: "",
+    preferredNotes: "",
+    dealbreakerNotes: "",
+    maxCommuteMinutes: 0,
     renovationTolerance: "moderate",
     renovationDecided: false,
   };
@@ -127,7 +120,6 @@ export function seedAppSettings(ts: string): AppSettings {
     createdAt: ts,
     updatedAt: ts,
     schemaVersion: SCHEMA_VERSION,
-    theme: "system",
     seeded: true,
     lastBackupAt: null,
   };

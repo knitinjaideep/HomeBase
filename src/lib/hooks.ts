@@ -1,111 +1,225 @@
 "use client";
 
-import { useLiveQuery } from "dexie-react-hooks";
-import { getDb } from "./db";
-import { SINGLETON_ID } from "./models";
+import type { z } from "zod";
+import { createClient } from "@/lib/supabase/client";
+import { useHouseholdContext } from "@/lib/household/context";
+import { useQuery } from "@/lib/data/use-query";
+import {
+  appSettingsSchema,
+  attendingTransitionSchema,
+  checklistSchema,
+  checklistTaskSchema,
+  dealSchema,
+  documentRecordSchema,
+  financialProfileSchema,
+  homePreferencesSchema,
+  householdProfileSchema,
+  journeyActionStateSchema,
+  journeyDecisionSchema,
+  journeyStageStateSchema,
+  lenderQuoteSchema,
+  mortgageApprovalSchema,
+  mortgageScenarioSchema,
+  professionalSchema,
+  propertySchema,
+  propertyVisitSchema,
+  resourceSchema,
+  townResearchSchema,
+} from "@/lib/models";
 
-/** Reactive reads. Each returns `undefined` until the first query resolves. */
+/**
+ * Reactive reads, Supabase-backed. Each returns `undefined` until the first
+ * fetch resolves, then refetches on window focus and after any mutation to
+ * the same table (see `lib/data/use-query.ts` / `lib/data/invalidation.ts`)
+ * — that refetch-on-relevant-event is the whole cross-device sync mechanism.
+ */
+
+function unwrap<T>({ data, error }: { data: T | null; error: { message: string } | null }): T {
+  if (error) throw new Error(error.message);
+  return data as T;
+}
+
+/**
+ * The Input generic must be pinned (not left to default to Output) or
+ * TypeScript infers T from Zod's Input position for schemas with
+ * `.default()` fields, which is optional-everywhere — the wrong type. See
+ * the fields' Output type — `T` itself — is all that ever gets used here.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySchema<T> = z.ZodType<T, z.ZodTypeDef, any>;
+
+/** One row per household, keyed by householdId instead of the old fixed SINGLETON_ID. */
+function useSingleton<T>(table: string, schema: AnySchema<T>) {
+  const { householdId } = useHouseholdContext();
+  return useQuery(
+    async () => {
+      const { data, error } = await createClient()
+        .from(table)
+        .select("*")
+        .eq("householdId", householdId)
+        .maybeSingle();
+      const row = unwrap({ data, error });
+      return row ? schema.parse(row) : undefined;
+    },
+    { deps: [householdId], watch: [table] },
+  );
+}
+
+function useCollection<T>(table: string, schema: AnySchema<T>) {
+  const { householdId } = useHouseholdContext();
+  return useQuery(
+    async () => {
+      const { data, error } = await createClient().from(table).select("*").eq("householdId", householdId);
+      return schema.array().parse(unwrap({ data, error }));
+    },
+    { deps: [householdId], watch: [table] },
+  );
+}
+
+function useFilteredCollection<T>(
+  table: string,
+  schema: AnySchema<T>,
+  column: string,
+  value: string | undefined,
+) {
+  const { householdId } = useHouseholdContext();
+  return useQuery(
+    async () => {
+      if (!value) return [] as T[];
+      const { data, error } = await createClient()
+        .from(table)
+        .select("*")
+        .eq("householdId", householdId)
+        .eq(column, value);
+      return schema.array().parse(unwrap({ data, error }));
+    },
+    { deps: [householdId, column, value], watch: [table], enabled: !!value },
+  );
+}
+
+function useRow<T>(table: string, schema: AnySchema<T>, id: string | undefined) {
+  const { householdId } = useHouseholdContext();
+  return useQuery(
+    async () => {
+      if (!id) return undefined;
+      const { data, error } = await createClient()
+        .from(table)
+        .select("*")
+        .eq("householdId", householdId)
+        .eq("id", id)
+        .maybeSingle();
+      const row = unwrap({ data, error });
+      return row ? schema.parse(row) : undefined;
+    },
+    { deps: [householdId, id], watch: [table], enabled: !!id },
+  );
+}
+
+// ---- Singletons -------------------------------------------------------
 
 export function useSettings() {
-  return useLiveQuery(() => getDb().appSettings.get(SINGLETON_ID));
+  return useSingleton("appSettings", appSettingsSchema);
 }
 
 export function useHousehold() {
-  return useLiveQuery(() => getDb().householdProfile.get(SINGLETON_ID));
+  return useSingleton("buyerProfile", householdProfileSchema);
 }
 
 export function useFinancial() {
-  return useLiveQuery(() => getDb().financialProfile.get(SINGLETON_ID));
+  return useSingleton("financialProfile", financialProfileSchema);
 }
 
 export function usePreferences() {
-  return useLiveQuery(() => getDb().homePreferences.get(SINGLETON_ID));
-}
-
-export function useProperties() {
-  return useLiveQuery(() => getDb().properties.toArray());
-}
-
-export function useProperty(id: string | undefined) {
-  return useLiveQuery(() => (id ? getDb().properties.get(id) : undefined), [id]);
-}
-
-export function useVisitsForProperty(propertyId: string | undefined) {
-  return useLiveQuery(
-    () => (propertyId ? getDb().visits.where("propertyId").equals(propertyId).toArray() : []),
-    [propertyId],
-  );
-}
-
-export function useAllVisits() {
-  return useLiveQuery(() => getDb().visits.toArray());
-}
-
-export function useScenarios() {
-  return useLiveQuery(() => getDb().scenarios.toArray());
-}
-
-export function useLenderQuotes() {
-  return useLiveQuery(() => getDb().lenderQuotes.toArray());
-}
-
-export function useChecklists() {
-  return useLiveQuery(() => getDb().checklists.toArray());
-}
-
-export function useTasks() {
-  return useLiveQuery(() => getDb().tasks.toArray());
-}
-
-export function useTowns() {
-  return useLiveQuery(() => getDb().towns.toArray());
-}
-
-// ---- Journey --------------------------------------------------------------
-
-export function useJourneyStages() {
-  return useLiveQuery(() => getDb().journeyStages.toArray());
-}
-
-export function useJourneyActions() {
-  return useLiveQuery(() => getDb().journeyActions.toArray());
-}
-
-export function useJourneyDecisions() {
-  return useLiveQuery(() => getDb().journeyDecisions.toArray());
+  return useSingleton("homePreferences", homePreferencesSchema);
 }
 
 export function useAttendingTransition() {
-  return useLiveQuery(() => getDb().attendingTransition.get(SINGLETON_ID));
+  return useSingleton("attendingTransition", attendingTransitionSchema);
+}
+
+// ---- Properties & visits ------------------------------------------------
+
+export function useProperties() {
+  return useCollection("properties", propertySchema);
+}
+
+export function useProperty(id: string | undefined) {
+  return useRow("properties", propertySchema, id);
+}
+
+export function useVisitsForProperty(propertyId: string | undefined) {
+  return useFilteredCollection("propertyVisits", propertyVisitSchema, "propertyId", propertyId);
+}
+
+export function useAllVisits() {
+  return useCollection("propertyVisits", propertyVisitSchema);
+}
+
+// ---- Finances -------------------------------------------------------------
+
+export function useScenarios() {
+  return useCollection("mortgageScenarios", mortgageScenarioSchema);
+}
+
+export function useLenderQuotes() {
+  return useCollection("lenderQuotes", lenderQuoteSchema);
+}
+
+// ---- Checklists & towns -----------------------------------------------
+
+export function useChecklists() {
+  return useCollection("checklists", checklistSchema);
+}
+
+export function useTasks() {
+  return useCollection("checklistTasks", checklistTaskSchema);
+}
+
+export function useTowns() {
+  return useCollection("towns", townResearchSchema);
+}
+
+// ---- Journey ----------------------------------------------------------
+
+export function useJourneyStages() {
+  return useCollection("journeyStages", journeyStageStateSchema);
+}
+
+export function useJourneyActions() {
+  return useCollection("journeyActions", journeyActionStateSchema);
+}
+
+export function useJourneyDecisions() {
+  return useCollection("journeyDecisions", journeyDecisionSchema);
 }
 
 export function useApprovals() {
-  return useLiveQuery(() => getDb().mortgageApprovals.toArray());
+  return useCollection("mortgageApprovals", mortgageApprovalSchema);
 }
 
+// ---- Professionals, resources, documents, deals ------------------------
+
 export function useProfessionals() {
-  return useLiveQuery(() => getDb().professionals.toArray());
+  return useCollection("professionals", professionalSchema);
 }
 
 export function useProfessional(id: string | undefined) {
-  return useLiveQuery(() => (id ? getDb().professionals.get(id) : undefined), [id]);
+  return useRow("professionals", professionalSchema, id);
 }
 
 export function useResources() {
-  return useLiveQuery(() => getDb().resources.toArray());
+  return useCollection("resources", resourceSchema);
 }
 
 export function useDocuments() {
-  return useLiveQuery(() => getDb().documents.toArray());
+  return useCollection("documents", documentRecordSchema);
 }
 
 export function useDeals() {
-  return useLiveQuery(() => getDb().deals.toArray());
+  return useCollection("deals", dealSchema);
 }
 
 export function useDealForProperty(propertyId: string | undefined) {
-  return useLiveQuery(
-    () => (propertyId ? getDb().deals.where("propertyId").equals(propertyId).first() : undefined),
-    [propertyId],
-  );
+  const rows = useFilteredCollection("deals", dealSchema, "propertyId", propertyId);
+  return rows?.[0];
 }

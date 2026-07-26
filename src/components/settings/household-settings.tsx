@@ -6,16 +6,19 @@ import { updateHousehold } from "@/lib/repo";
 import { Button, Field, Input, Panel } from "@/components/ui";
 import { NumberField, TextField, TextareaField, ToggleField } from "@/components/form-fields";
 import { useToast } from "@/components/toast";
+import { useSaveStatus } from "@/lib/data/save-status";
+import { SaveIndicator } from "@/components/save-indicator";
 
 export function HouseholdSettings({ profile }: { profile: HouseholdProfile }) {
   const { notify } = useToast();
-  const { register, control, handleSubmit, formState } = useForm<HouseholdProfile>({
+  const saveStatus = useSaveStatus();
+  const { register, control, handleSubmit } = useForm<HouseholdProfile>({
     defaultValues: profile,
   });
 
   const onSubmit = handleSubmit(async (values) => {
-    await updateHousehold({ ...profile, ...values });
-    notify("Household profile saved");
+    const result = await saveStatus.run(() => updateHousehold({ ...profile, ...values }));
+    if (result.ok) notify("Household profile saved");
   });
 
   return (
@@ -62,8 +65,9 @@ export function HouseholdSettings({ profile }: { profile: HouseholdProfile }) {
 
         <TextareaField register={register} name="notes" label="Notes" rows={2} />
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={formState.isSubmitting}>
+        <div className="flex items-center justify-end gap-3">
+          <SaveIndicator status={saveStatus.status} error={saveStatus.error} onRetry={saveStatus.retry} />
+          <Button type="submit" disabled={saveStatus.status === "saving"}>
             Save household
           </Button>
         </div>

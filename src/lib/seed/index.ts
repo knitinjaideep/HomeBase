@@ -29,7 +29,7 @@ export {
 } from "./profile";
 export { seedResources, SEED_RESOURCES } from "./resources";
 
-function buildTimeline(ts: string): { checklists: Checklist[]; tasks: ChecklistTask[] } {
+export function buildTimeline(ts: string): { checklists: Checklist[]; tasks: ChecklistTask[] } {
   const checklists: Checklist[] = [];
   const tasks: ChecklistTask[] = [];
 
@@ -68,7 +68,7 @@ function buildTimeline(ts: string): { checklists: Checklist[]; tasks: ChecklistT
   return { checklists, tasks };
 }
 
-function buildTemplates(ts: string): { checklists: Checklist[]; tasks: ChecklistTask[] } {
+export function buildTemplates(ts: string): { checklists: Checklist[]; tasks: ChecklistTask[] } {
   const checklists: Checklist[] = [];
   const tasks: ChecklistTask[] = [];
 
@@ -107,7 +107,7 @@ function buildTemplates(ts: string): { checklists: Checklist[]; tasks: Checklist
   return { checklists, tasks };
 }
 
-function buildTowns(ts: string): TownResearch[] {
+export function buildTowns(ts: string): TownResearch[] {
   // Seeded as "considering" — the guide requires an in-person research visit
   // before a town may be promoted to Primary (journey stage 9).
   const names = ["Princeton", "Summit", "Ridgewood", "Livingston", "Short Hills"];
@@ -123,7 +123,7 @@ function buildTowns(ts: string): TownResearch[] {
   );
 }
 
-function buildAttendingTransition(ts: string): AttendingTransition {
+export function buildAttendingTransition(ts: string): AttendingTransition {
   return attendingTransitionSchema.parse({
     id: SINGLETON_ID,
     createdAt: ts,

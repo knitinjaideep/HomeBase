@@ -6,16 +6,19 @@ import { updateFinancial } from "@/lib/repo";
 import { Button, Callout, Panel } from "@/components/ui";
 import { NumberField } from "@/components/form-fields";
 import { useToast } from "@/components/toast";
+import { useSaveStatus } from "@/lib/data/save-status";
+import { SaveIndicator } from "@/components/save-indicator";
 
 export function FinancialSettings({ profile }: { profile: FinancialProfile }) {
   const { notify } = useToast();
-  const { register, handleSubmit, formState } = useForm<FinancialProfile>({
+  const saveStatus = useSaveStatus();
+  const { register, handleSubmit } = useForm<FinancialProfile>({
     defaultValues: profile,
   });
 
   const onSubmit = handleSubmit(async (values) => {
-    await updateFinancial({ ...profile, ...values });
-    notify("Financial profile saved");
+    const result = await saveStatus.run(() => updateFinancial({ ...profile, ...values }));
+    if (result.ok) notify("Financial profile saved");
   });
 
   return (
@@ -84,8 +87,9 @@ export function FinancialSettings({ profile }: { profile: FinancialProfile }) {
           your plan changes — nothing is locked.
         </Callout>
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={formState.isSubmitting}>
+        <div className="flex items-center justify-end gap-3">
+          <SaveIndicator status={saveStatus.status} error={saveStatus.error} onRetry={saveStatus.retry} />
+          <Button type="submit" disabled={saveStatus.status === "saving"}>
             Save finances
           </Button>
         </div>

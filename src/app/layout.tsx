@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { AppShell } from "@/components/app-shell";
 
 const geist = Geist({
   subsets: ["latin"],
@@ -12,13 +11,19 @@ const geist = Geist({
 
 export const metadata: Metadata = {
   title: "HomeScope",
-  description: "A private, local-only home-buying decision tracker.",
+  description: "A private home-buying decision tracker for your household.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "HomeScope",
+  },
 };
 
 export const viewport: Viewport = {
   themeColor: "#f9f8f5",
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
 };
 
 // Applies the saved theme before paint to avoid a flash of the wrong theme.
@@ -39,9 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
-        <Providers>
-          <AppShell>{children}</AppShell>
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

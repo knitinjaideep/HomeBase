@@ -22,6 +22,8 @@ import {
 } from "@/components/ui";
 import { PROFESSIONAL_ROLE_LABELS, SELECTION_STATUS_LABELS } from "@/lib/labels";
 import { cn } from "@/lib/util";
+import { useSaveStatus, type SaveStatus } from "@/lib/data/save-status";
+import { SaveIndicator } from "@/components/save-indicator";
 
 const TAB_BASE = "px-3 py-1.5 text-sm font-medium rounded-md transition-colors";
 
@@ -29,7 +31,9 @@ const TAB_BASE = "px-3 py-1.5 text-sm font-medium rounded-md transition-colors";
 export function ProfessionalDetail({ professional }: { professional: Professional }) {
   const isAgent = professional.role === "buyer-agent";
   const [tab, setTab] = useState<"contact" | "verify" | "interview" | "scorecard">("contact");
-  const set = (patch: Partial<Professional>) => void updateProfessional(professional.id, patch);
+  const saveStatus = useSaveStatus();
+  const set = (patch: Partial<Professional>) =>
+    void saveStatus.run(() => updateProfessional(professional.id, patch));
 
   const tabs: { id: typeof tab; label: string; show: boolean }[] = [
     { id: "contact", label: "Contact & fit", show: true },
@@ -55,9 +59,9 @@ export function ProfessionalDetail({ professional }: { professional: Professiona
       </div>
 
       {tab === "contact" && <ContactTab professional={professional} set={set} />}
-      {tab === "verify" && isAgent && <VerificationTab professional={professional} />}
-      {tab === "interview" && <InterviewTab professional={professional} />}
-      {tab === "scorecard" && isAgent && <ScorecardTab professional={professional} />}
+      {tab === "verify" && isAgent && <VerificationTab professional={professional} run={saveStatus.run} />}
+      {tab === "interview" && <InterviewTab professional={professional} run={saveStatus.run} />}
+      {tab === "scorecard" && isAgent && <ScorecardTab professional={professional} run={saveStatus.run} />}
 
       <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
         <Button
@@ -69,7 +73,13 @@ export function ProfessionalDetail({ professional }: { professional: Professiona
         >
           Remove
         </Button>
-        <div className="text-xs text-ink-subtle">Changes save automatically.</div>
+        <div className="flex items-center gap-2 text-xs text-ink-subtle">
+          {saveStatus.status === "idle" ? (
+            "Changes save automatically."
+          ) : (
+            <SaveIndicator status={saveStatus.status} error={saveStatus.error} onRetry={saveStatus.retry} />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -157,10 +167,10 @@ const VERIFY_TEXT_FIELDS: { key: keyof AgentVerification; label: string; placeho
   { key: "compensationStructure", label: "Compensation structure" },
 ];
 
-function VerificationTab({ professional }: { professional: Professional }) {
+function VerificationTab({ professional, run }: { professional: Professional; run: SaveStatus["run"] }) {
   const v = professional.agentVerification;
   const setV = (patch: Partial<AgentVerification>) =>
-    void updateProfessional(professional.id, { agentVerification: { ...v, ...patch } });
+    void run(() => updateProfessional(professional.id, { agentVerification: { ...v, ...patch } }));
 
   return (
     <div className="space-y-4">
@@ -227,13 +237,13 @@ function VerificationTab({ professional }: { professional: Professional }) {
   );
 }
 
-function InterviewTab({ professional }: { professional: Professional }) {
+function InterviewTab({ professional, run }: { professional: Professional; run: SaveStatus["run"] }) {
   const set = interviewQuestionsForRole(professional.role);
   if (!set) return <p className="text-sm text-ink-muted">No interview bank for this role.</p>;
   const answers = professional.interviewAnswers;
 
   const saveAnswer = (qid: string, value: string) =>
-    void updateProfessional(professional.id, { interviewAnswers: { ...answers, [qid]: value } });
+    void run(() => updateProfessional(professional.id, { interviewAnswers: { ...answers, [qid]: value } }));
 
   return (
     <div className="space-y-3">
@@ -275,10 +285,10 @@ const SCORECARD_FIELDS: { key: keyof AgentScorecard; label: string }[] = [
   { key: "overallConfidence", label: "Overall confidence" },
 ];
 
-function ScorecardTab({ professional }: { professional: Professional }) {
+function ScorecardTab({ professional, run }: { professional: Professional; run: SaveStatus["run"] }) {
   const sc = professional.agentScorecard;
   const setSc = (patch: Partial<AgentScorecard>) =>
-    void updateProfessional(professional.id, { agentScorecard: { ...sc, ...patch } });
+    void run(() => updateProfessional(professional.id, { agentScorecard: { ...sc, ...patch } }));
 
   const rated = SCORECARD_FIELDS.map((f) => sc[f.key]).filter((x): x is number => x !== null);
   const avg = rated.length ? (rated.reduce((a, b) => a + b, 0) / rated.length).toFixed(1) : "—";

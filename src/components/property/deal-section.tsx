@@ -16,6 +16,8 @@ import { money, dateLabel } from "@/lib/format";
 import { Panel, Button, Field, Input, Textarea, Callout, Toggle, Select } from "@/components/ui";
 import { StepSection } from "@/components/journey/journey-ui";
 import { cn } from "@/lib/util";
+import { useSaveStatus } from "@/lib/data/save-status";
+import { SaveIndicator } from "@/components/save-indicator";
 
 /**
  * The per-property deal — journey stages 12–18. Created lazily: a property has
@@ -58,14 +60,18 @@ function DealBody({
   deal: Deal;
   financial: FinancialProfile;
 }) {
-  const set = (patch: Partial<Deal>) => void updateDeal(property.id, patch);
+  const saveStatus = useSaveStatus();
+  const set = (patch: Partial<Deal>) => void saveStatus.run(() => updateDeal(property.id, patch));
   const walkAway = deal.walkAwayPrice;
   const proposed = property.offerPrice ?? deal.offer.initialOfferPrice;
   const overWalkAway = walkAway != null && proposed != null && proposed > walkAway;
 
   return (
     <div className="space-y-5">
-      <h2 className="font-display text-xl text-ink">Offer & deal</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-display text-xl text-ink">Offer & deal</h2>
+        <SaveIndicator status={saveStatus.status} error={saveStatus.error} onRetry={saveStatus.retry} />
+      </div>
 
       {/* Prominent walk-away banner */}
       <Panel
