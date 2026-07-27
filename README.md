@@ -46,68 +46,309 @@ This app deliberately does **not** include: a chatbot or any LLM/AI features, RA
 
 ---
 
-## Tech stack
+## Architecture
 
-- **Next.js 15** (App Router)
-- **TypeScript** (strict)
-- **Tailwind CSS 3**
-- **React Hook Form** for forms
-- **Zod** for schemas and import/export validation
-- **Supabase** — Postgres (with Row Level Security), Auth (email OTP / magic link), via `@supabase/supabase-js` and `@supabase/ssr`
-- **Dexie** (IndexedDB) — kept only as a *read-only legacy store* for the one-time local-data migration (see "Cloud setup" below); nothing in the live app writes to it anymore
-- `localStorage` — small per-device UI preferences (theme) and temporary unsaved-form drafts only
-- **Vitest** for tests
+- **Next.js 15** (App Router, TypeScript, strict mode)
+- **Supabase** — Postgres with Row Level Security, Auth (email OTP), via `@supabase/supabase-js` / `@supabase/ssr`
+- **Vercel** — hosting, Preview Deployments (per PR/branch) and Production Deployment (on merge to `main`), custom domain
+- **GitHub Actions** — CI quality gate (lint, typecheck, test, build) on every PR and on `main`
 
-No Express/FastAPI backend, no ORM, no microservices, no analytics. Next.js anonymous CLI telemetry has been disabled for this project.
+```
+Browser / PWA
+      ↓
+Next.js (App Router)
+      ↓
+Supabase Auth (email OTP)  +  Postgres (Row Level Security)
 
-## Local setup
+GitHub                              Vercel
+  main branch                         │
+  feature/*, fix/*, chore/* branches  │
+      ↓                               │
+  Pull Request → main                 │
+      ↓                               │
+  GitHub Actions ("HomeScope CI")     │
+  lint · typecheck · test · build     │
+      ↓                               ↓
+  you review + merge     ──────►  Preview Deployment (per PR, for manual testing)
+                                   Production Deployment (on merge to main)
+                                       ↓
+                          https://home.nitinkotcherlakota.com
+```
+
+GitHub Actions **never deploys** — Vercel's own Git integration owns Preview and Production deployments, triggered directly by pushes/PRs, independent of the CI workflow's outcome. CI is a review aid, not a deployment gate in the infrastructure sense (though branch protection can make it one for merging — see "GitHub Actions" below).
+
+## Production environment
+
+**Production URL:** `https://home.nitinkotcherlakota.com`
+
+- `main` branch = production. Every merge to `main` triggers a new Vercel Production Deployment.
+- Feature branches and their Pull Requests each get their own Vercel **Preview Deployment** — a real, running copy of the app on a unique URL, used for manual testing before merge.
+- **Vercel** is the deployment platform for both environments (see "Vercel preview deployments" below).
+- **Supabase** is the persistent application database and auth provider for both local dev and production — there is a single Supabase project; there is no separate "staging" database (see "Database change workflow" for why this makes migration discipline important).
+
+---
+
+## Local development
 
 ```bash
-npm install
-cp .env.example .env.local   # fill in your Supabase project URL + anon key — see "Cloud setup"
+git clone <this repository>
+cd HomeBase
+npm ci
+cp .env.example .env.local   # fill in your Supabase project URL + publishable key
 npm run dev                  # http://localhost:3000
 ```
 
 You'll be redirected to `/login` until you sign in (email code or magic link). The first sign-in creates your household and seeds a blank planning profile, three clearly-marked **SAMPLE** properties, the timeline, and the reusable checklists.
 
-## Cloud setup (Supabase)
+Required environment variables (see "Environment variables" for the full table — no values shown here, only names):
 
-HomeScope needs a Supabase project as its database. This is a one-time setup:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
-1. **Create a project** at [supabase.com](https://supabase.com) (the free tier is enough for a household of this size).
-2. **Run the migrations.** In the Supabase dashboard → SQL Editor, paste and run, in order:
-   - `supabase/migrations/0001_schema.sql` (all tables, indexes)
-   - `supabase/migrations/0002_functions.sql` (household bootstrap + backup-import functions)
-   - `supabase/migrations/0003_policies.sql` (Row Level Security policies)
-   - `supabase/migrations/0004_data_api_grants.sql` (explicit Data API grants — required even with RLS enabled; see the file header for why)
+If you don't yet have a Supabase project to point at, see `docs/SUPABASE_SETUP.md` for one-time project setup (creating the project, running the four migrations, enabling email auth, setting Site URL / Redirect URLs).
 
-   (Equivalently, if you have the [Supabase CLI](https://supabase.com/docs/guides/cli) installed: `supabase link` then `supabase db push`.)
-3. **Enable email auth.** Dashboard → Authentication → Providers → Email should already be on by default; no social providers are needed.
-4. **Set the Site URL and Redirect URLs.** Dashboard → Authentication → URL Configuration:
-   - Site URL: your production URL (e.g. `https://your-app.vercel.app`)
-   - Redirect URLs: add both `http://localhost:3000/auth/callback` (for local dev) and `https://your-app.vercel.app/auth/callback` (for production)
-5. **Copy your API keys.** Dashboard → Settings → API: the **Project URL** and the **anon / publishable** key (never the `service_role` key — this app never uses it, in the browser or on the server).
-6. Put those two values in `.env.local` (see `.env.example`) for local development, and in Vercel's environment variables for production (see below).
-
-## Deploying to Vercel
-
-1. Push this repository to GitHub (or connect the local folder directly with `vercel`).
-2. Import the project in Vercel.
-3. Set the environment variables (Project Settings → Environment Variables), for both Production and Preview:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-4. Deploy. Then add the Vercel deployment URL to Supabase's Redirect URLs (step 4 above) if you haven't already.
-5. Open the deployed app on your Mac, iPhone, and iPad, sign in, and use **Add to Home Screen** / **Install** to get the standalone app experience.
-
-## Commands
+### Commands
 
 ```bash
 npm run dev         # start the dev server
 npm run build       # production build
 npm run start       # serve the production build
-npm run lint        # ESLint
+npm run lint        # ESLint (via `next lint`)
 npm run typecheck   # tsc --noEmit
-npm test            # Vitest (unit + legacy-persistence integration)
+npm test            # Vitest — unit + legacy-persistence integration (run once)
+npm run test:watch  # Vitest in watch mode
+```
+
+**Node version:** the project has no `.nvmrc`/`engines` pin; local development and CI both use **Node 22** (the current Node LTS line, compatible with Next.js 15's `^18.18 || >=20` requirement). If you change this, update `.github/workflows/ci.yml` and check Vercel's Project Settings → Node.js Version stays aligned.
+
+---
+
+## Normal code change workflow
+
+```bash
+git checkout main
+git pull
+git checkout -b feature/descriptive-name
+```
+
+Make your change, then validate locally with the project's real commands:
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+Then:
+
+```bash
+git add .
+git commit -m "..."
+git push -u origin feature/descriptive-name
+```
+
+1. Open a Pull Request to `main`.
+2. GitHub Actions ("HomeScope CI") runs automatically.
+3. Wait until CI passes.
+4. Open the Vercel **Preview Deployment** URL (posted on the PR by Vercel's GitHub integration).
+5. Test the feature.
+6. If the change affects layout/responsive behavior, check it on mobile and iPad-sized viewports too (see the design constraints in "Known limitations" and the project's UI conventions).
+7. Merge the PR.
+8. Vercel deploys `main` to production automatically.
+9. Verify production at `https://home.nitinkotcherlakota.com`.
+
+## Database change workflow
+
+**This section is especially important — the production database is shared; there is no separate staging database.**
+
+A change is a *database change* if it touches, directly or via a migration file, any of: a new/changed field, a new table, RLS policies, indexes, constraints, foreign keys, Postgres functions/triggers, or Data API grants. Application code that reads/writes a new column always needs an accompanying migration — the two must land in the same PR.
+
+Migrations live in `supabase/migrations/`, applied in order (`0001_schema.sql` → `0002_functions.sql` → `0003_policies.sql` → `0004_data_api_grants.sql`, plus any new ones you add after). Full detail on what each one does and the Data API grant/RLS model lives in **`docs/SUPABASE_SETUP.md`** — this section covers the *process*, not the schema.
+
+1. Create a feature branch.
+2. Implement the application code change.
+3. Write a new migration file under `supabase/migrations/` (additive — new `CREATE`/`ALTER`/`GRANT` statements; see "Critical database safety rules" below).
+4. Test locally: point `.env.local` at a project you can safely experiment against, or review the SQL carefully by reading.
+5. Open the PR.
+6. Let CI run. CI **detects** the migration and posts a notice in the workflow's Job Summary — it does not apply anything and does not fail the build because a migration exists.
+7. **Review the migration SQL carefully** — read every statement, don't skim.
+8. Before touching production, dry-run it:
+   ```bash
+   npx supabase link --project-ref <your-project-ref>   # one-time per machine
+   npx supabase db push --dry-run
+   ```
+9. Inspect exactly what the dry-run says it will change. If anything is unexpected, stop (see "Troubleshooting").
+10. Only after you've manually approved it, apply it:
+    ```bash
+    npx supabase db push
+    ```
+11. Verify schema/RLS/data behavior — e.g. re-run the read-only verification queries in `docs/SUPABASE_SETUP.md`, or test the affected feature against this Supabase project.
+12. Merge the PR.
+13. Vercel deploys the application code change to production.
+14. Verify production end-to-end (the app code and the database are now both updated).
+
+**No automated step ever runs `supabase db push` against production.** GitHub Actions cannot reach your production database — there is no database credential in CI at all.
+
+## Critical database safety rules
+
+**DO NOT:**
+
+- Delete production tables or columns casually.
+- Disable RLS "to fix permissions" — fix the policy or the grant instead (see `docs/SUPABASE_SETUP.md` → "Data API access" for the two-layer grant + RLS model, and its 403/permission-denied troubleshooting entry).
+- Broadly grant table access to `anon` as a shortcut.
+- Run destructive migration SQL (`DROP TABLE`, `TRUNCATE`, unscoped `DELETE`, `ALTER COLUMN TYPE`, `CASCADE`) without explicitly reasoning through what data it affects first.
+- Put a `service_role` key into frontend code, `NEXT_PUBLIC_*`, or anywhere in this repository — the app has no code path that needs it, and none should be added.
+- Put a database password into `NEXT_PUBLIC_*` or any client-reachable variable.
+- Modify production schema directly through the Supabase Dashboard's table editor without also creating the equivalent migration file — the migration files are the source of truth; a dashboard-only change means the next `db push` from a clean checkout won't reproduce it.
+- Automatically apply production migrations from CI, ever.
+- Edit a migration file that has already been applied to production. Once applied, treat it as immutable — write a new, corrective migration instead (see "Rollbacks" below).
+
+Migrations are part of source control: the sequence of files in `supabase/migrations/` is the one accurate history of the schema. Anyone reconstructing the database from scratch should be able to run them in order and get the current schema.
+
+## RLS / authorization
+
+(Inspected from the actual policies in `supabase/migrations/0003_policies.sql` and functions in `0002_functions.sql` — see `docs/SUPABASE_SETUP.md` for the full model, including the Data API grant layer and read-only SQL you can run to verify the live configuration.)
+
+Every household-owned table is scoped through a `is_household_member()` helper (`SECURITY DEFINER`), enforcing:
+
+```
+auth.uid()  →  household_members.user_id  →  household_members.household_id  →  record."householdId"
+```
+
+All policies are scoped `to authenticated` explicitly. A signed-in user's claimed `householdId` is never trusted on its own — the policy re-derives membership from `auth.uid()` server-side on every request. `households` and `household_members` have no direct insert/delete policies at all: new households and memberships are only ever created through `bootstrap_household()` / `import_household_backup()` (`SECURITY DEFINER`, pinned `search_path`, identity derived only from `auth.uid()`).
+
+**To safely add a new household-owned table:** add it to `0001_schema.sql`-style migration with a `"householdId"` column referencing `households(id)`, then add matching `enable row level security` + four policies (select/insert/update/delete, all gated on `is_household_member("householdId")`) in a new migration alongside the equivalent `GRANT ... to authenticated` — see `0003_policies.sql` and `0004_data_api_grants.sql` for the exact pattern to copy. A new table isn't done until both layers exist; RLS alone still returns `403` without the grant.
+
+## Environment variables
+
+| Variable | Required locally? | Required in Vercel? | Public or secret? | Purpose |
+|---|---|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes, in `.env.local` | Yes, for Production **and** Preview | Public | Supabase project API URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes, in `.env.local` | Yes, for Production **and** Preview | Public | Supabase anon/publishable key — access is gated by RLS, not by keeping this value secret |
+
+That's the complete list — the app has no other environment variables, no server-only secrets, and no code path that reads a Supabase `service_role` key.
+
+- **`.env.local`** → local development only, git-ignored, never committed.
+- **Vercel Environment Variables** (Project Settings → Environment Variables) → what Production and Preview deployments actually run with. Set both variables for both environments.
+- **GitHub Secrets/Variables** → only relevant to CI. **None are currently required** — `npm run build` succeeds with these variables entirely unset (verified: no page calls Supabase during static generation), so `.github/workflows/ci.yml` hardcodes harmless non-functional placeholder values directly in the workflow rather than reading any secret. If a future change makes the build depend on a real value, add it as a GitHub Actions **repository Variable** (`vars.*`), not a Secret — these values are public by design.
+
+Any variable prefixed `NEXT_PUBLIC_` is bundled into client-side JavaScript and downloaded by every visitor's browser. Never add a secret under that prefix.
+
+## Supabase Auth configuration changes
+
+Some authentication configuration lives in the Supabase Dashboard, not in this Git repository, and changing it does **not** require (or trigger) a Vercel deployment unless application code also changes:
+
+- **Site URL** and **Redirect URLs** (Dashboard → Authentication → URL Configuration). Production Site URL should be `https://home.nitinkotcherlakota.com`; Redirect URLs must include `https://home.nitinkotcherlakota.com/auth/callback` and `http://localhost:3000/auth/callback` for local dev (see "Vercel preview deployments" below for the Preview-URL caveat).
+- **Email templates** — the Magic Link template needs `{{ .Token }}` added for the OTP code to actually appear in the email; see `docs/SUPABASE_SETUP.md` → "Email OTP configuration" for the exact template.
+- **SMTP configuration / OTP settings.**
+
+The application's own callback route (`src/app/auth/callback/route.ts`) always redirects relative to the request's own origin — it has no hardcoded host — so it works unmodified in local dev, Preview, and Production; only the Supabase-side Redirect URL allow-list needs to know about each host.
+
+## Email
+
+Authentication email delivery uses a custom sending domain, **`auth.nitinkotcherlakota.com`**, configured as Supabase's SMTP provider. That configuration (API keys, SMTP credentials, DNS records) is managed entirely outside this repository, in the Supabase Dashboard and the email provider's own console — nothing about it lives in this codebase, and no API key or SMTP password should ever be added here.
+
+## Vercel preview deployments
+
+- Any feature branch with an open Pull Request gets a Preview Deployment — a real, independently-running instance of the app on its own generated URL.
+- `main` gets the Production Deployment at `https://home.nitinkotcherlakota.com`.
+- Use the Preview URL for the manual testing step in "Normal code change workflow" above, before merging.
+- **Limitation (inspected, not assumed):** the app's numeric-code sign-in works unmodified on any Preview URL, since `verifyOtp` doesn't depend on a redirect at all. The **clickable magic-link** in the OTP email, however, only redirects successfully if the Preview URL matches an entry in Supabase's Redirect URLs allow-list — and Vercel generates a new unique URL per deployment. If you want the clickable link (not just the typed code) to work on Preview deployments, add a wildcard entry for your Vercel preview URL pattern to Supabase's Redirect URLs (Supabase supports wildcard matching there) — otherwise just use the code-entry path when testing on Preview.
+
+## GitHub Actions
+
+Workflow: **`.github/workflows/ci.yml`** ("HomeScope CI"). Triggers on every Pull Request targeting `main`, and on every push to `main` (as a post-merge sanity check).
+
+It runs, in order, using the project's real `npm` scripts:
+
+1. Checkout (full history, for the migration-diff step)
+2. Node 22 setup with npm dependency caching
+3. `npm ci`
+4. `npm run lint`
+5. `npm run typecheck`
+6. `npm test`
+7. `npm run build`
+8. On PRs only: a non-blocking check for changed files under `supabase/migrations/**`, surfaced as a notice in the workflow's Job Summary (see "Database change workflow") — it never fails CI and never applies anything.
+
+If lint, typecheck, tests, or the build fail, the workflow fails and shows a red ✗ on the PR — that's the point of "make failures obvious." **CI never deploys anything and never touches Supabase.** Vercel's own Git integration handles Preview/Production deployment independently of this workflow's pass/fail state.
+
+### Recommended branch protection for `main`
+
+(Not applied automatically — GitHub repository settings require explicit action; this documents the recommendation for you to apply in Settings → Branches.)
+
+- Require a pull request before merging.
+- Require status checks to pass before merging, with **`HomeScope CI / Lint, typecheck, test, build`** as the required check (the exact context GitHub reports — it only becomes selectable in the branch protection UI after the workflow has run at least once on a PR).
+- Require branches to be up to date before merging (optional, but keeps CI honest).
+- Block force pushes to `main`.
+- Skip anything requiring multiple/enterprise-style approvals — unnecessary for a personal project.
+
+## Branching strategy
+
+- `main` → production, always deployable.
+- `feature/*`, `fix/*`, `chore/*` → all development work, short-lived, merged via PR.
+
+No `develop` or `release` branches — kept intentionally simple for a personal project.
+
+## Rollbacks
+
+**Application code:** either (a) revert the offending commit/PR on `main` and push the revert (which triggers a normal new Production Deployment), or (b) use Vercel's own rollback/promote-a-previous-deployment mechanism from the Vercel dashboard for that project — consult Vercel's current UI/docs, since exact locations there can change independently of this repo.
+
+**Database migrations are different — an application rollback never rolls back a database migration.** If a migration causes a problem in production:
+
+- Do not edit or delete the already-applied migration file.
+- Write a new, explicit corrective migration (e.g. re-adding a dropped column, reversing a `GRANT`) and run it through the same review → dry-run → manual-apply process above.
+- Prefer backward-compatible migrations from the start (additive changes, nullable-then-backfill-then-constrain patterns) so a bad deploy doesn't require an emergency schema rollback at all.
+
+## Troubleshooting
+
+**CI fails at `npm ci`** — usually `package-lock.json` is out of sync with `package.json` (someone ran `npm install` and didn't commit the updated lockfile). Regenerate locally with `npm install`, commit the lockfile, push.
+
+**CI fails lint** — run `npm run lint` locally; fix the reported rule violations (this repo enforces `@typescript-eslint/no-explicit-any` as an error, not a warning).
+
+**CI fails TypeScript** — run `npm run typecheck` locally and fix the reported errors. Don't add `// @ts-ignore` to silence it — fix the underlying type.
+
+**CI fails tests** — run `npm test` locally to reproduce; check whether your change altered a pure function under `src/lib/calculations/` or `src/lib/journey/` without updating its test.
+
+**CI fails build** — run `npm run build` locally to reproduce. Since the build doesn't require real Supabase env vars, a build failure is almost always a real code/type issue, not a missing-secret issue.
+
+**Vercel Preview fails** — check the deployment's build logs in the Vercel dashboard first; if CI passed but Preview fails, suspect a Vercel-specific environment variable that isn't set for the Preview environment (see "Environment variables" above — both variables must be enabled for Preview, not just Production).
+
+**Production deploy succeeds but the page errors** — check the browser console/network tab first; then check Vercel's Function/Runtime logs for that deployment. Confirm Production's environment variables actually point at the intended Supabase project.
+
+**Supabase permission/RLS error (403 / 42501)** — see `docs/SUPABASE_SETUP.md` → "Troubleshooting"; almost always a missing `GRANT`, not a missing/broken policy.
+
+**Environment variable missing** — locally: is it in `.env.local`? In Vercel: is it set for the environment (Production vs. Preview) that's actually failing?
+
+**OTP/auth issue** — confirm it's not a Dashboard-side config issue first (Site URL, Redirect URLs, email template missing `{{ .Token }}`) before changing application code — see "Supabase Auth configuration changes" above and `docs/SUPABASE_SETUP.md`.
+
+**Migration dry-run shows unexpected SQL** — stop. Don't apply it. Re-read the migration file for a typo or an unintended `DROP`/`CASCADE`, and confirm you're linked to the project you think you are (`npx supabase migration list`).
+
+**Database migration fails when applying** — read the Postgres error carefully (constraint violation, type mismatch against existing data, etc.); fix the migration file, dry-run again, and only then re-apply. Never force it through.
+
+**Local app works but production doesn't** — the most common causes, in order: a Vercel env var missing/wrong for Production specifically, a migration that was applied to a different Supabase project than the one Production points at, or a Supabase Dashboard auth setting (Site URL/Redirect URLs) that's only configured for `localhost`.
+
+## Quick reference
+
+**Code-only change**
+```
+branch → edit → npm run lint/typecheck/test/build → push → PR → CI → Vercel Preview → merge → production
+```
+
+**Database change**
+```
+branch → edit → migration → local review → PR → CI (migration notice) → review SQL →
+npx supabase db push --dry-run → manual npx supabase db push → verify DB → merge → production
+```
+
+**Auth/email config change**
+```
+update Supabase Dashboard (and/or the email provider) → test sign-in → deploy app only if source code also changed
+```
+
+**Environment variable change**
+```
+update the value in Vercel (Production and/or Preview) → redeploy → verify
 ```
 
 ---
@@ -156,8 +397,12 @@ Defaults used when a property leaves a field blank: property taxes fall to the e
 ## Project structure
 
 ```
+.github/
+  workflows/ci.yml          # "HomeScope CI" — lint · typecheck · test · build; never deploys
+docs/
+  SUPABASE_SETUP.md          # deep dive: migrations, RLS/grants model, auth flow, troubleshooting
 supabase/
-  migrations/               # 0001 schema · 0002 functions (RPCs) · 0003 RLS policies
+  migrations/               # 0001 schema · 0002 functions (RPCs) · 0003 RLS policies · 0004 Data API grants
 src/
   middleware.ts              # refreshes the Supabase session; redirects unauthenticated requests to /login
   app/
@@ -206,7 +451,7 @@ The distinction between `lib/guide` (content) and `lib/journey` (engines over sa
 
 `npm test` covers the calculation core (mortgage payment, cumulative interest, closing cash, reserves, DTI, guardrail classification, the combined plan evaluation, comparison, lender estimates, the overall score), JSON export/import validation, the legacy local database (seeding idempotency and the export → wipe → import round-trip, plus the migration read path that a real browser upgrade would exercise), and a **journey engine suite** verifying guide-content integrity (18 unique stages, globally-unique action/decision ids, an attending contract weighted far above reading a resource), deterministic `autoCheck` criteria (guardrails, childcare, the attending-timing risk, distinct-lender counting, visit-before-Primary), weighted progress and descriptive readiness, the next-action rules (including the critical walk-away-exceeded warning), and personalization token substitution.
 
-The Supabase-backed read/write layer (`lib/hooks.ts`, `lib/repo.ts`) is not covered by automated tests — there is no CI Supabase instance to run against. It has been verified manually against a real project; see the deployment notes for the manual smoke-test steps.
+The Supabase-backed read/write layer (`lib/hooks.ts`, `lib/repo.ts`) is not covered by automated tests — there is no CI Supabase instance to run against (see "Suggested future enhancements"). It has been verified manually against a real project.
 
 ---
 
@@ -229,3 +474,4 @@ These are intentionally out of scope and would be added later, if ever:
 - Calendar integration for showings and deadlines
 - Optional market-data import for comparable sales
 - Inspection-document organization
+- A Docker-based local Supabase instance (`supabase start`) wired into CI for real migration/RLS testing (e.g. pgTAP) — deliberately not built now; it would add meaningful CI infrastructure for a personal project whose migrations are already reviewed by hand before every production apply
