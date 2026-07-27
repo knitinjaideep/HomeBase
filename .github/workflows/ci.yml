@@ -1,0 +1,85 @@
+name: HomeScope CI
+
+# Quality gate only. Vercel's Git integration owns Preview/Production
+# deployment; this workflow never deploys and never touches Supabase.
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Harmless, non-functional placeholders — CI never talks to a real
+      # Supabase project. Both vars are public (NEXT_PUBLIC_*) by design
+      # (see README.md "Environment variables"), and `npm run build`
+      # currently succeeds even with these unset (no page calls Supabase
+      # during static generation). They're set anyway purely so CI stays
+      # green if a future page ever reads them at build time.
+      NEXT_PUBLIC_SUPABASE_URL: "https://placeholder.supabase.co"
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "placeholder-key-for-ci-build-only"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so the migration-detection step below can diff
+          # against the PR base branch.
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Check for Supabase migration changes
+        if: github.event_name == 'pull_request'
+        run: |
+          set -e
+          CHANGED=$(git diff --name-only \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}" \
+            -- supabase/migrations/)
+          if [ -n "$CHANGED" ]; then
+            {
+              echo "### ⚠️ Supabase migration detected"
+              echo ""
+              echo "This PR changes files under \`supabase/migrations/\`:"
+              echo ""
+              echo '```'
+              echo "$CHANGED"
+              echo '```'
+              echo ""
+              echo "Production database migration requires manual review and manual application."
+              echo "Do not merge until the migration SQL has been reviewed, dry-run, and applied by hand."
+              echo "See README.md → \"Database change workflow\" for the exact steps."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
