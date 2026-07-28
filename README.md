@@ -164,7 +164,7 @@ git push -u origin feature/descriptive-name
 
 A change is a *database change* if it touches, directly or via a migration file, any of: a new/changed field, a new table, RLS policies, indexes, constraints, foreign keys, Postgres functions/triggers, or Data API grants. Application code that reads/writes a new column always needs an accompanying migration — the two must land in the same PR.
 
-Migrations live in `supabase/migrations/`, applied in order (`0001_schema.sql` → `0002_functions.sql` → `0003_policies.sql` → `0004_data_api_grants.sql` → `0005_household_v2_schema.sql` → `0006_household_v2_functions.sql` → `0007_household_v2_policies.sql` → `0008_household_v2_grants.sql`, plus any new ones you add after). Full detail on what each one does and the Data API grant/RLS model lives in **`docs/SUPABASE_SETUP.md`** — this section covers the *process*, not the schema.
+Migrations live in `supabase/migrations/`, applied in order (`0001_schema.sql` → `0002_functions.sql` → `0003_policies.sql` → `0004_data_api_grants.sql` → `0005_household_v2_schema.sql` → `0006_household_v2_functions.sql` → `0007_household_v2_policies.sql` → `0008_household_v2_grants.sql` → the `0009`–`0011` invite-code fixes → `0012_workspace_mode_schema.sql` → `0013_workspace_mode_policies.sql` → `0014_workspace_mode_grants.sql`, plus any new ones you add after). Full detail on what each one does and the Data API grant/RLS model lives in **`docs/SUPABASE_SETUP.md`**; the buyer/homeowner **workspace mode** foundation (why mode is stored at the workspace level) lives in **`docs/WORKSPACE_MODE.md`**. This section covers the *process*, not the schema.
 
 1. Create a feature branch.
 2. Implement the application code change.
