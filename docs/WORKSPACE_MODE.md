@@ -1,10 +1,11 @@
 # Workspace mode — buyer / homeowner domain foundation
 
 HomeScope supports two primary experiences: **home buyer** (`buying`) and
-**homeowner** (`owning`). This document explains the data model that this PR
-establishes and, in particular, **why the mode is stored at the workspace
-level** rather than on the user. It is the foundation only — no path-selection
-UI, navigation, or journey changes ship in this PR.
+**homeowner** (`owning`). This document explains the data model behind them and,
+in particular, **why the mode is stored at the workspace level** rather than on
+the user. The first PR established the foundation (schema, resolver, service,
+hooks); the path-selection + onboarding UI described under
+"[Path selection & onboarding](#path-selection--onboarding)" ships on top of it.
 
 ## One shared foundation, not two apps
 
@@ -87,8 +88,14 @@ singleton reads.
   `workspaceModeSchema`, `buyerModeProfileSchema`, `ownerModeProfileSchema`.
 - `src/lib/workspace/resolver.ts` — pure mode resolver.
 - `src/lib/workspace/service.ts` — read/write service (client-injected core +
-  app wrappers), used by PR 2's onboarding.
-- `src/lib/workspace/hooks.ts` — `useActiveWorkspace()` / `useWorkspaceMode()`.
+  app wrappers), including the atomic `completeBuyer/OwnerOnboarding` used by the
+  onboarding flow.
+- `src/lib/workspace/hooks.ts` — `useActiveWorkspace()` / `useWorkspaceMode()`
+  plus `useBuyer/OwnerModeProfile()` for pre-filling the change-path screen.
+- `src/lib/workspace/onboarding-gate.ts` — the pure `resolvePathGate` decision.
+- `src/components/workspace/` — the path cards, the two onboarding forms, the
+  full-screen `WorkspaceOnboarding` flow, and the `WorkspaceGate`.
+- `src/app/(app)/paths/page.tsx` — the "Change path" screen (overlay, pre-filled).
 - `supabase/migrations/0012_workspace_mode_schema.sql` — `households.activeMode`
   plus `buyerModeProfile` / `ownerModeProfile` singletons.
 - `supabase/migrations/0013_workspace_mode_policies.sql` — RLS for the two new
@@ -97,6 +104,38 @@ singleton reads.
 
 Enum values use the codebase's lowercase convention (`first-time`,
 `single-family`, …), matching `taskStatus`/`selectionStatus`/`renovationTolerance`.
+
+## Path selection & onboarding
+
+A user with no mode selected must choose a path before seeing the app. That
+gate is one pure decision (`src/lib/workspace/onboarding-gate.ts`,
+`resolvePathGate`) over the resolved view: `loading` → `path-selection` →
+`app`. It is mounted once, in the `(app)` layout, as `WorkspaceGate` — *inside*
+`HouseholdProvider` (so the active household is already resolved) and *around*
+`AppShell`, so the landing renders full-screen without app chrome.
+
+The flow (`src/components/workspace/`) is two short steps:
+
+1. **Landing** — the two path cards (`path-cards.tsx`), each an accessible,
+   keyboard-navigable radio (not a div click handler): buyer in the mint/teal
+   `accent`, homeowner in the amber/gold `caution` token. A notes-first message
+   makes clear nothing is auto-populated.
+2. **Compact profile** — one small step per path (`buyer-onboarding-form.tsx` /
+   `owner-onboarding-form.tsx`). Buyer asks experience + arrangement (+ optional,
+   non-binding participant names); owner asks property type + ownership stage
+   (+ optional move-in date).
+
+Nothing is persisted until step 2 is submitted. Completion is atomic
+(`completeBuyerOnboarding` / `completeOwnerOnboarding`): the profile is stamped
+`onboardingCompletedAt`, then `activeMode` is set. So an abandoned flow stays
+`unselected` (the gate shows it again) and a finished flow survives refresh /
+logout / login.
+
+Changing the active path later is **non-destructive** — Settings → "HomeScope
+path" → *Change path* opens the same flow at `/paths`, pre-filled. Switching
+only upserts that path's profile and flips `activeMode`; it never deletes the
+other path's profile or any household data. The mode toggle is intentionally
+kept out of the main navigation.
 
 ## The two profiles vs. the legacy `buyerProfile`
 

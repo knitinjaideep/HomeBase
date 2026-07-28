@@ -16,8 +16,14 @@
 import { createClient } from "@/lib/supabase/client";
 import { useHouseholdContext } from "@/lib/household/context";
 import { useQuery } from "@/lib/data/use-query";
-import { WORKSPACE_TABLE } from "@/lib/models";
-import { loadWorkspaceView } from "./service";
+import {
+  BUYER_MODE_PROFILE_TABLE,
+  OWNER_MODE_PROFILE_TABLE,
+  WORKSPACE_TABLE,
+  type BuyerModeProfile,
+  type OwnerModeProfile,
+} from "@/lib/models";
+import { loadBuyerModeProfile, loadOwnerModeProfile, loadWorkspaceView } from "./service";
 import type { ResolvedMode, WorkspaceView } from "./resolver";
 
 /** The active workspace + resolved mode, or `undefined` until the first load. */
@@ -32,4 +38,26 @@ export function useActiveWorkspace(): WorkspaceView | undefined {
 /** Convenience: just the resolved mode ("buying" | "owning" | "unselected" | undefined). */
 export function useWorkspaceMode(): ResolvedMode | undefined {
   return useActiveWorkspace()?.mode;
+}
+
+/**
+ * The buyer path-selection profile: `undefined` until first load, then the row
+ * or `null` when the household has never saved one. Used to pre-fill the flow
+ * when a user revisits it from Settings.
+ */
+export function useBuyerModeProfile(): BuyerModeProfile | null | undefined {
+  const { householdId } = useHouseholdContext();
+  return useQuery(() => loadBuyerModeProfile(createClient(), householdId), {
+    deps: [householdId],
+    watch: [BUYER_MODE_PROFILE_TABLE],
+  });
+}
+
+/** The owner path-selection profile; same shape/semantics as the buyer hook. */
+export function useOwnerModeProfile(): OwnerModeProfile | null | undefined {
+  const { householdId } = useHouseholdContext();
+  return useQuery(() => loadOwnerModeProfile(createClient(), householdId), {
+    deps: [householdId],
+    watch: [OWNER_MODE_PROFILE_TABLE],
+  });
 }

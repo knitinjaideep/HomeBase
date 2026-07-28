@@ -161,9 +161,36 @@ export function saveOwnerModeProfile(
   return saveSingleton(client, OWNER_MODE_PROFILE_TABLE, householdId, ownerModeProfileSchema, patch);
 }
 
+/**
+ * Finish onboarding for a path: stamp the profile as complete and *then* set
+ * the workspace mode. Order matters — the mode write is last so that a failure
+ * partway through leaves the workspace `unselected` (the gate simply shows the
+ * flow again) rather than "in a mode with no profile". Switching from one path
+ * to another only upserts that path's profile and flips `activeMode`; it never
+ * touches the other path's profile or any household data, so changing the
+ * active path is non-destructive.
+ */
+export async function completeBuyerOnboarding(
+  client: SupabaseClient,
+  householdId: string,
+  patch: Partial<BuyerModeProfile>,
+): Promise<void> {
+  await saveBuyerModeProfile(client, householdId, { ...patch, onboardingCompletedAt: now() });
+  await setWorkspaceMode(client, householdId, "buying");
+}
+
+export async function completeOwnerOnboarding(
+  client: SupabaseClient,
+  householdId: string,
+  patch: Partial<OwnerModeProfile>,
+): Promise<void> {
+  await saveOwnerModeProfile(client, householdId, { ...patch, onboardingCompletedAt: now() });
+  await setWorkspaceMode(client, householdId, "owning");
+}
+
 // ---- App wrappers ---------------------------------------------------------
 // Resolve the browser client + active household and invalidate on write, so
-// `useActiveWorkspace()` and the profile reads refetch. Consumed by PR 2.
+// `useActiveWorkspace()` and the profile reads refetch.
 
 export async function updateWorkspaceMode(mode: WorkspaceMode): Promise<void> {
   await setWorkspaceMode(createClient(), getCurrentHouseholdId(), mode);
@@ -178,4 +205,22 @@ export async function updateBuyerModeProfile(patch: Partial<BuyerModeProfile>): 
 export async function updateOwnerModeProfile(patch: Partial<OwnerModeProfile>): Promise<void> {
   await saveOwnerModeProfile(createClient(), getCurrentHouseholdId(), patch);
   invalidateTable(OWNER_MODE_PROFILE_TABLE);
+}
+
+/**
+ * The two calls the onboarding UI makes. Each resolves the browser client +
+ * active household, completes the path, then invalidates both the workspace
+ * row and the profile so `useActiveWorkspace()` / the profile hooks refetch
+ * and the gate re-resolves into the app.
+ */
+export async function finishBuyerOnboarding(patch: Partial<BuyerModeProfile>): Promise<void> {
+  await completeBuyerOnboarding(createClient(), getCurrentHouseholdId(), patch);
+  invalidateTable(BUYER_MODE_PROFILE_TABLE);
+  invalidateTable(WORKSPACE_TABLE);
+}
+
+export async function finishOwnerOnboarding(patch: Partial<OwnerModeProfile>): Promise<void> {
+  await completeOwnerOnboarding(createClient(), getCurrentHouseholdId(), patch);
+  invalidateTable(OWNER_MODE_PROFILE_TABLE);
+  invalidateTable(WORKSPACE_TABLE);
 }
