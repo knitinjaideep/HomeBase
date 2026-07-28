@@ -42,7 +42,7 @@ export default function PropertiesError({
           Back to Homes
         </Link>
         <Link
-          href="/"
+          href="/journey"
           className="inline-flex min-h-[2.5rem] items-center rounded-lg border border-line px-4 text-sm font-medium text-ink hover:bg-surface-muted"
         >
           Go to Journey

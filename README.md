@@ -24,7 +24,7 @@ Every guided step page follows the same shape: **what it accomplishes · why it 
 
 ## Navigation
 
-- **Journey** *(landing page)* — current stage, weighted overall progress, target closing window, next recommended actions, blocking items, decisions awaiting input, recently completed milestones, five readiness meters (financial, mortgage, team, search, offer), and the full 18-stage roadmap. The former dashboard's key figures live here.
+- **Journey** *(`/journey`, the signed-in landing page)* — current stage, weighted overall progress, target closing window, next recommended actions, blocking items, decisions awaiting input, recently completed milestones, five readiness meters (financial, mortgage, team, search, offer), and the full 18-stage roadmap. The former dashboard's key figures live here. (`/`, the site root, is the logged-out public welcome page — see "Public entry & sign-in" below.)
 - **Properties** — add / edit / archive / restore / delete, per-property cost estimates, guardrail banding, missing-info flags, a printable report, and a per-property **deal** covering stages 12–18 (offer readiness, negotiation log, attorney review, inspections, financing, closing prep, post-closing) with a prominent private **walk-away price**.
 - **Compare** — 2–5 properties side by side; most-favorable cell marked per row (never an automatic winner).
 - **Finances** — a transparent mortgage & cash planner with named, duplicable scenarios.
@@ -33,6 +33,13 @@ Every guided step page follows the same shape: **what it accomplishes · why it 
 - **Timeline** — the plan and reusable checklists, plus a **documents index** (records that a document exists and where it lives; no files are stored).
 - **Resources** — a curated library of primary-source links (federal, NJ, regulator, then established organizations), each with our own summary, a "report outdated" action, and a restore-curated-set option.
 - **Settings** — household members and family invitations, the household planning profile that personalizes the whole guide, plus data & backups and account sign-out.
+
+## Public entry & sign-in
+
+- **`/`** — the public welcome page (`src/components/marketing/`). Shown only to logged-out visitors; an authenticated visitor is redirected server-side to `/journey`. No buyer/homeowner choice, no app navigation, no account data — just a calm introduction with **Log in** and **Get started**.
+- **`/get-started`** — also public. Reuses PR 2's `PathSelectionCards` unmodified (no second copy of that UI) to let a new visitor pick buyer/homeowner *before* signing in. The choice is stored client-side only (`lib/workspace/provisional-path.ts`, the same narrow localStorage convention as the theme preference) and read back by `WorkspaceGate` after sign-in to pre-select the same step in the real (PR 2) onboarding flow, instead of asking twice. It is a UI hint only — the workspace row in Supabase remains the sole source of truth for the actual mode.
+- **`/login`** — unchanged. One Supabase email-OTP form that already serves as both sign-in *and* sign-up (`shouldCreateUser: true`); there is no separate password-based registration and, by design, no "this email already exists" signal for OTP auth (Supabase intentionally answers new and existing emails identically to prevent account enumeration).
+- Both `/` and `/get-started` are listed in `middleware.ts`'s public paths — each page resolves the session itself (via the Supabase **server** client) and redirects an authenticated visitor into the app, rather than middleware special-casing them.
 
 ## Personalized next-action engine
 
@@ -427,14 +434,18 @@ docs/
 supabase/
   migrations/               # 0001 schema · 0002 functions (RPCs) · 0003 RLS policies · 0004 Data API grants
 src/
-  middleware.ts              # refreshes the Supabase session; redirects unauthenticated requests to /login
+  middleware.ts              # refreshes the Supabase session; redirects unauthenticated requests
+                              #   to /login, except the public paths (/, /get-started, /login,
+                              #   /auth/callback) — see "Public entry & sign-in" above
   app/
-    login/                  # email OTP + magic-link sign-in
+    page.tsx                # public welcome page ("/"), or redirects an authenticated visitor to /journey
+    get-started/            # public buyer/homeowner pre-selection ("/get-started")
+    login/                  # email OTP + magic-link sign-in (also serves sign-up)
     auth/callback/          # PKCE code exchange for the magic-link path
     manifest.ts icon.tsx apple-icon.tsx icons/  # PWA manifest + generated icons
-    (app)/                  # every authenticated page, wrapped by HouseholdProvider + AppShell
-      page.tsx                # Journey overview (landing)
-      journey/[stageId]/      # guided step pages (18 stages)
+    (app)/                  # every authenticated page, wrapped by HouseholdProvider + WorkspaceGate + AppShell
+      journey/               # Journey overview (landing, "/journey") + [stageId]/ guided step pages (18 stages)
+      paths/                  # "Change path" — re-opens PR 2's onboarding, pre-filled
       properties/             # list + [id] detail (+ per-property deal)
       visit/[id]/              # Visit mode
       professionals/ resources/
@@ -442,11 +453,15 @@ src/
     layout.tsx globals.css
   components/
     ui.tsx                  # primitives (Button, Panel, Field, BandPill, SaveIndicator …)
+    marketing/               # public welcome page + /get-started (header, hero, principles, footer)
+    workspace/                # PR 2 path cards, buyer/owner onboarding forms, WorkspaceGate
     journey/ professional/ documents/ property/deal-section.tsx lender/approvals.tsx
     migration-banner.tsx    # the one-time "Local Home data found" import flow
     modal.tsx toast.tsx app-nav.tsx app-shell.tsx providers.tsx …
   lib/
     supabase/               # browser client, server client, middleware helper
+    workspace/                # buyer/homeowner mode: resolver, service, hooks, onboarding-gate,
+                              #   provisional-path.ts (pre-auth path hint) — see docs/WORKSPACE_MODE.md
     household/               # HouseholdProvider (bootstrap + new-household seeding), current-household id
     data/                    # use-query.ts (fetch/refetch primitive), invalidation.ts, save-status.ts, draft.ts
     calculations/           # tested pure functions (mortgage, closing, dti,

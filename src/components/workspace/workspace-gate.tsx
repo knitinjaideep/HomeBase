@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useActiveWorkspace } from "@/lib/workspace/hooks";
 import { resolvePathGate } from "@/lib/workspace/onboarding-gate";
+import { clearProvisionalPath, readProvisionalPath } from "@/lib/workspace/provisional-path";
 import { WorkspaceOnboarding } from "./workspace-onboarding";
 
 /**
@@ -17,6 +18,10 @@ import { WorkspaceOnboarding } from "./workspace-onboarding";
  * On completion the service invalidates the workspace row, so `useActiveWorkspace`
  * refetches, the gate re-resolves to "app", and we send the user to the
  * dashboard. A returning user with a mode already set never sees this.
+ *
+ * If the visitor picked a path on /get-started before they had an account, it
+ * is passed here as `initialMode` so the path step opens pre-selected instead
+ * of asking again from a blank slate.
  */
 export function WorkspaceGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -32,7 +37,15 @@ export function WorkspaceGate({ children }: { children: React.ReactNode }) {
   }
 
   if (state === "path-selection") {
-    return <WorkspaceOnboarding onComplete={() => router.replace("/")} />;
+    return (
+      <WorkspaceOnboarding
+        initialMode={readProvisionalPath()}
+        onComplete={() => {
+          clearProvisionalPath();
+          router.replace("/journey");
+        }}
+      />
+    );
   }
 
   return <>{children}</>;
