@@ -91,8 +91,9 @@ export const propertyFinanceSchema = z.object({
 export type PropertyFinance = z.infer<typeof propertyFinanceSchema>;
 
 export const propertySchema = baseEntitySchema.extend({
-  // Identity
-  address: z.string().min(1),
+  // Identity — a persisted property must always have a real address. Trimmed
+  // here so a whitespace-only address ("   ") is rejected, not silently stored.
+  address: z.string().trim().min(1),
   town: z.string().default(""),
   zip: z.string().default(""),
   listingUrl: z.string().default(""),
@@ -143,6 +144,35 @@ export const propertySchema = baseEntitySchema.extend({
   archivedAt: z.string().nullable().default(null),
 });
 export type Property = z.infer<typeof propertySchema>;
+
+/**
+ * Draft schema for the property FORM. A form is allowed to begin — and stay,
+ * mid-edit — incomplete: an address the user has not typed yet, a blank town
+ * or ZIP. It therefore relaxes the persisted requirements: no generated
+ * id/createdAt/updatedAt/dateAdded and no sample/archive housekeeping, and an
+ * address that may be "" while editing. It is derived from `propertySchema`
+ * (rather than re-listing every field) so the two can never drift.
+ *
+ * The persisted `propertySchema` above stays strict — a draft becomes a
+ * Property only when it is saved (see `prepareProperty` in lib/property-form).
+ */
+export const propertyFormSchema = propertySchema
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+    dateAdded: true,
+    isSample: true,
+    isArchived: true,
+    archivedAt: true,
+  })
+  .extend({
+    address: z.string().default(""),
+    schools: schoolResearchSchema.default({}),
+    ratings: propertyRatingsSchema.default({}),
+    finance: propertyFinanceSchema.default({}),
+  });
+export type PropertyFormValues = z.infer<typeof propertyFormSchema>;
 
 /** One spouse's take on a visited property. Embedded inside a PropertyVisit. */
 export const spousePropertyReviewSchema = z.object({

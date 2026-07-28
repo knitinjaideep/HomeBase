@@ -457,7 +457,10 @@ src/
                             #   snapshot, criteria (autoChecks), personalization,
                             #   progress (weighted), next-actions, use-snapshot
     models/                 # Zod schemas + inferred types (incl. journey,
-                            #   professional, resource, document, deal)
+                            #   professional, resource, document, deal). Property
+                            #   has two: propertySchema (strict persisted domain
+                            #   object) and propertyFormSchema (relaxed draft — a
+                            #   form may render with an empty address).
     seed/                   # editable profile (blank defaults), samples, timeline,
                             #   checklists, curated resources; cloud.ts seeds a new household
     db.ts repo.ts hooks.ts   # repo.ts/hooks.ts are Supabase-backed; db.ts is the
@@ -465,6 +468,11 @@ src/
     migration.ts             # the one-time local-data → cloud import flow
     backup.ts                # export / validated import (both legacy-local and cloud), snapshot
     property-finance.ts finance-presets.ts lender-estimate.ts
+    property-form.ts         # draft ↔ persisted Property adapters: a form
+                            #   starts as a draft (empty fields allowed) and is
+                            #   validated into a Property only at save time
+    property-search.ts       # pure Homes search-box filter (blank/whitespace
+                            #   query matches everything; no external lookup)
     format.ts labels.ts util.ts theme.ts
 ```
 
@@ -472,7 +480,7 @@ The distinction between `lib/guide` (content) and `lib/journey` (engines over sa
 
 ### Tested behavior
 
-`npm test` covers the calculation core (mortgage payment, cumulative interest, closing cash, reserves, DTI, guardrail classification, the combined plan evaluation, comparison, lender estimates, the overall score), JSON export/import validation, the legacy local database (seeding idempotency and the export → wipe → import round-trip, plus the migration read path that a real browser upgrade would exercise), and a **journey engine suite** verifying guide-content integrity (18 unique stages, globally-unique action/decision ids, an attending contract weighted far above reading a resource), deterministic `autoCheck` criteria (guardrails, childcare, the attending-timing risk, distinct-lender counting, visit-before-Primary), weighted progress and descriptive readiness, the next-action rules (including the critical walk-away-exceeded warning), and personalization token substitution.
+`npm test` covers the calculation core (mortgage payment, cumulative interest, closing cash, reserves, DTI, guardrail classification, the combined plan evaluation, comparison, lender estimates, the overall score), JSON export/import validation, the legacy local database (seeding idempotency and the export → wipe → import round-trip, plus the migration read path that a real browser upgrade would exercise), and a **journey engine suite** verifying guide-content integrity (18 unique stages, globally-unique action/decision ids, an attending contract weighted far above reading a resource), deterministic `autoCheck` criteria (guardrails, childcare, the attending-timing risk, distinct-lender counting, visit-before-Primary), weighted progress and descriptive readiness, the next-action rules (including the critical walk-away-exceeded warning), and personalization token substitution. It also covers the **property form draft ↔ persisted boundary** (`lib/property-form`: a draft may start with an empty address; `prepareProperty` trims and rejects an empty/whitespace address inline, and only a saved property must satisfy the strict `propertySchema`) and the Homes search filter (`lib/property-search`).
 
 The Supabase-backed read/write layer (`lib/hooks.ts`, `lib/repo.ts`) is not covered by automated tests — there is no CI Supabase instance to run against (see "Suggested future enhancements"). It has been verified manually against a real project.
 
