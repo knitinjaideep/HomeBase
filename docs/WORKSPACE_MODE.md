@@ -137,6 +137,22 @@ only upserts that path's profile and flips `activeMode`; it never deletes the
 other path's profile or any household data. The mode toggle is intentionally
 kept out of the main navigation.
 
+### Pre-auth entry (`/get-started`)
+
+A third PR added a public welcome page (`/`) and a public `/get-started` page
+that lets a *logged-out* visitor pick buyer/homeowner before they have an
+account, reusing `PathSelectionCards` unmodified. Since a brand-new household
+still starts `unselected` regardless, without a hand-off the visitor would be
+asked the same question twice — once pre-auth, once when `WorkspaceGate` first
+renders `WorkspaceOnboarding` for their new household. `lib/workspace/provisional-path.ts`
+closes that gap: a small localStorage-only hint (same narrow, per-device
+convention as `lib/theme.ts`) written on `/get-started` and read back by
+`WorkspaceGate`, which passes it as `WorkspaceOnboarding`'s existing
+`initialMode` prop so the path step opens pre-selected. It is discarded once
+onboarding completes (or if it doesn't parse as a real mode) and is never
+itself treated as the selection — the workspace row remains the only
+authoritative source.
+
 ## The two profiles vs. the legacy `buyerProfile`
 
 `buyerModeProfile` is **not** the same as the existing `buyerProfile` table.

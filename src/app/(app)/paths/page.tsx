@@ -35,7 +35,7 @@ export default function PathsPage() {
         initialMode={initialMode}
         initialBuyer={buyer ?? null}
         initialOwner={owner ?? null}
-        onComplete={() => router.replace("/")}
+        onComplete={() => router.replace("/journey")}
         onCancel={() => router.back()}
       />
     </div>

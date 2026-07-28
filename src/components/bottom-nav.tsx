@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/util";
 
 const ITEMS = [
-  { href: "/", label: "Journey", icon: JourneyIcon },
+  { href: "/journey", label: "Journey", icon: JourneyIcon },
   { href: "/properties", label: "Homes", icon: HomesIcon },
   { href: "/toolkit", label: "Toolkit", icon: ToolkitIcon },
 ];
@@ -13,7 +13,7 @@ const ITEMS = [
 const TOOLKIT_ROUTES = ["/toolkit", "/compare", "/finances", "/lenders", "/professionals", "/resources", "/timeline"];
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/" || pathname.startsWith("/journey");
+  if (href === "/journey") return pathname.startsWith("/journey");
   if (href === "/properties") return pathname.startsWith("/properties") || pathname.startsWith("/visit");
   if (href === "/toolkit") return TOOLKIT_ROUTES.some((r) => pathname === r || pathname.startsWith(`${r}/`));
   return pathname === href;
