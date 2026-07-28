@@ -21,6 +21,7 @@ import {
   lenderQuoteSchema,
   mortgageApprovalSchema,
   mortgageScenarioSchema,
+  noteSchema,
   professionalSchema,
   propertySchema,
   propertyVisitSchema,
@@ -214,6 +215,11 @@ export function useResources() {
 
 export function useDocuments() {
   return useCollection("documents", documentRecordSchema);
+}
+
+/** Shared across buyer and homeowner mode — see lib/models/note.ts. */
+export function useNotes() {
+  return useCollection("notes", noteSchema);
 }
 
 export function useDeals() {

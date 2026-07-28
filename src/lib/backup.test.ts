@@ -36,6 +36,7 @@ function validBackup(): Backup {
       resources: [],
       documents: [],
       deals: [],
+      notes: [],
     },
   };
 }

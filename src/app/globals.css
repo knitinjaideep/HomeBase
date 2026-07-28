@@ -16,6 +16,23 @@
   --positive: 47 122 84;
   --caution: 158 106 24;
   --critical: 168 68 51;
+
+  /* Mode accent — buyer (mint/teal, same hue as --accent) is the default;
+     [data-mode="owning"] below overrides to amber/gold (same hue as
+     --caution). Set once on AppShell's root via data-mode so nav highlights
+     and the two homeowner pages follow the active mode without recoloring
+     unrelated components. */
+  --mode-accent: 41 104 96;
+  --mode-accent-muted: 224 237 233;
+  --mode-accent-border: rgb(41 104 96 / 0.3);
+  --mode-accent-glow: rgb(41 104 96 / 0.16);
+}
+
+[data-mode="owning"] {
+  --mode-accent: 158 106 24;
+  --mode-accent-muted: 250 240 219;
+  --mode-accent-border: rgb(158 106 24 / 0.3);
+  --mode-accent-glow: rgb(158 106 24 / 0.16);
 }
 
 .dark {
@@ -31,6 +48,18 @@
   --positive: 110 190 140;
   --caution: 214 170 96;
   --critical: 224 138 120;
+
+  --mode-accent: 122 189 178;
+  --mode-accent-muted: 32 48 46;
+  --mode-accent-border: rgb(122 189 178 / 0.3);
+  --mode-accent-glow: rgb(122 189 178 / 0.16);
+}
+
+.dark[data-mode="owning"] {
+  --mode-accent: 214 170 96;
+  --mode-accent-muted: 54 45 26;
+  --mode-accent-border: rgb(214 170 96 / 0.3);
+  --mode-accent-glow: rgb(214 170 96 / 0.16);
 }
 
 html {

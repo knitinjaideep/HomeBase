@@ -1,13 +1,30 @@
+"use client";
+
+import { useActiveMode } from "@/lib/workspace/mode-context";
 import { AppNav } from "./app-nav";
 import { BottomNav } from "./bottom-nav";
 import { BackupReminder } from "./backup-reminder";
 import { MigrationBanner } from "./migration-banner";
 
-/** Frame around every page: navigation, the backup reminder, and a footer note. */
+/**
+ * Frame around every page: navigation, the backup reminder, and a footer
+ * note. Reads the mode WorkspaceGate already resolved (via `useActiveMode`,
+ * never a fresh fetch — see mode-context.tsx for why that distinction avoids
+ * a hydration flicker) and passes it down to AppNav/BottomNav, and sets
+ * `data-mode` on the root element so the mode-accent CSS custom properties
+ * (globals.css) cascade to the nav's active-item styling without recoloring
+ * the rest of the shell.
+ */
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const mode = useActiveMode();
+
   return (
-    <div className="flex min-h-screen flex-col" style={{ paddingLeft: "env(safe-area-inset-left)", paddingRight: "env(safe-area-inset-right)" }}>
-      <AppNav />
+    <div
+      data-mode={mode}
+      className="flex min-h-screen flex-col"
+      style={{ paddingLeft: "env(safe-area-inset-left)", paddingRight: "env(safe-area-inset-right)" }}
+    >
+      <AppNav mode={mode} />
       <MigrationBanner />
       <BackupReminder />
       <main className="mx-auto w-full max-w-content flex-1 px-4 py-8 pb-24 sm:px-6 sm:py-10 md:pb-10">
@@ -22,7 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <p className="mt-2">All figures are estimates for personal planning, not professional advice.</p>
         </div>
       </footer>
-      <BottomNav />
+      <BottomNav mode={mode} />
     </div>
   );
 }

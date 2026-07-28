@@ -93,6 +93,12 @@ singleton reads.
 - `src/lib/workspace/hooks.ts` — `useActiveWorkspace()` / `useWorkspaceMode()`
   plus `useBuyer/OwnerModeProfile()` for pre-filling the change-path screen.
 - `src/lib/workspace/onboarding-gate.ts` — the pure `resolvePathGate` decision.
+- `src/lib/workspace/navigation.ts` — the pure per-mode navigation config:
+  `getNavigationForMode`, `getDefaultRouteForMode`, `isRouteAvailableForMode`,
+  `isNavItemActive`. See "Mode-aware navigation & routing" below.
+- `src/lib/workspace/mode-context.tsx` — `ActiveModeProvider`/`useActiveMode`,
+  exposing the mode `WorkspaceGate` already resolved to `AppShell` without a
+  second fetch (see that section for why this distinction matters).
 - `src/components/workspace/` — the path cards, the two onboarding forms, the
   full-screen `WorkspaceOnboarding` flow, and the `WorkspaceGate`.
 - `src/app/(app)/paths/page.tsx` — the "Change path" screen (overlay, pre-filled).
@@ -152,6 +158,54 @@ convention as `lib/theme.ts`) written on `/get-started` and read back by
 onboarding completes (or if it doesn't parse as a real mode) and is never
 itself treated as the selection — the workspace row remains the only
 authoritative source.
+
+## Mode-aware navigation & routing
+
+Once a mode is selected, `src/lib/workspace/navigation.ts` decides what the
+rest of the app shows — the one place this is decided, rather than scattering
+mode checks across components:
+
+- **`getNavigationForMode(mode)`** — the primary nav destinations. Buying
+  keeps the pre-existing Journey/Homes/Toolkit nav unchanged, plus a new
+  shared "Notes" item. Owning gets its own destinations: HomeBase (its
+  landing page), Maintenance (a placeholder — see below), and Notes.
+- **`getDefaultRouteForMode(mode)`** — `/journey` for buying, `/homebase` for
+  owning. Used after onboarding/path-switching completes and by the route
+  guard's redirect target.
+- **`isRouteAvailableForMode(pathname, mode)`** — true unless `pathname` is
+  exclusive to the *other* mode. Buyer-only: `/journey`, `/properties`,
+  `/visit`, `/compare`, `/finances`, `/lenders`, `/professionals`,
+  `/resources`, `/timeline`, `/toolkit` (its tools — mortgage math, lender
+  quotes, the buyer's-agent directory — are inherently pre-purchase; making
+  Toolkit reachable from homeowner mode would surface exactly the buyer-only
+  surfaces homeowner mode should hide). Owner-only: `/homebase`,
+  `/maintenance`. Everything else (`/notes`, `/settings`, `/paths`) is shared
+  by omission from both lists.
+
+`WorkspaceGate` enforces this: in its `"app"` state (a mode is already
+selected), it checks the current pathname against `isRouteAvailableForMode`
+and redirects to `getDefaultRouteForMode` instead of rendering the wrong
+experience — a buyer who manually opens `/homebase`, or a homeowner who opens
+`/journey`, gets bounced to their own mode's default page. Each mode's
+default route is always itself available in that mode, so this can never
+loop.
+
+`AppShell` reads the mode via `useActiveMode()` (from `mode-context.tsx`) —
+**not** a fresh `useWorkspaceMode()` call — because `WorkspaceGate` has
+already resolved it by the time `AppShell` mounts. A second independent fetch
+would start at `undefined` and could render buyer nav for a moment before
+resolving to `"owning"`, which is exactly the hydration flicker mode-aware
+navigation is supposed to avoid.
+
+**Notes** (`src/lib/models/note.ts`, `/notes`) is the one genuinely new
+*shared* feature this introduced — a small freeform-notes table, deliberately
+mode-neutral (no stage/category reference), which is what makes it safe to
+expose in both nav configurations.
+
+**HomeBase** (`/homebase`) and **Maintenance** (`/maintenance`) are
+placeholder pages for now — they establish the homeowner destination and its
+place in the nav, but no maintenance data model exists yet; that is future
+work, not part of this change.
 
 ## The two profiles vs. the legacy `buyerProfile`
 

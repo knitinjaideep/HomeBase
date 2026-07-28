@@ -5,27 +5,14 @@ import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/util";
 import { useTheme } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
+import { getDefaultRouteForMode, getNavigationForMode, isNavItemActive } from "@/lib/workspace/navigation";
+import type { ResolvedMode } from "@/lib/workspace/resolver";
 
-const NAV = [
-  { href: "/journey", label: "Journey" },
-  { href: "/properties", label: "Homes" },
-  { href: "/toolkit", label: "Toolkit" },
-];
-
-/** Routes reached through the Toolkit hub, even though their URLs are not nested under it. */
-const TOOLKIT_ROUTES = ["/toolkit", "/compare", "/finances", "/lenders", "/professionals", "/resources", "/timeline"];
-
-function isActive(pathname: string, href: string): boolean {
-  if (href === "/journey") return pathname.startsWith("/journey");
-  if (href === "/properties") return pathname.startsWith("/properties") || pathname.startsWith("/visit");
-  if (href === "/toolkit") return TOOLKIT_ROUTES.some((r) => pathname === r || pathname.startsWith(`${r}/`));
-  return pathname === href;
-}
-
-export function AppNav() {
+export function AppNav({ mode }: { mode: ResolvedMode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [theme, setTheme] = useTheme();
+  const nav = getNavigationForMode(mode);
 
   const cycleTheme = () => {
     const next = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
@@ -45,20 +32,22 @@ export function AppNav() {
   return (
     <header className="no-print sticky top-0 z-30 border-b border-line bg-canvas/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-content items-center justify-between gap-4 px-4 sm:px-6">
-        <Link href="/journey" className="font-display shrink-0 text-lg text-ink">
+        <Link href={getDefaultRouteForMode(mode)} className="font-display shrink-0 text-lg text-ink">
           HomeScope
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
-          {NAV.map((item) => {
-            const active = isActive(pathname, item.href);
+          {nav.map((item) => {
+            const active = isNavItemActive(pathname, item);
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
                   "rounded-lg px-3.5 py-2 text-sm font-medium transition-colors",
-                  active ? "bg-accent-soft text-accent" : "text-ink-muted hover:bg-surface-muted hover:text-ink",
+                  active
+                    ? "bg-mode-accent-muted text-mode-accent"
+                    : "text-ink-muted hover:bg-surface-muted hover:text-ink",
                 )}
               >
                 {item.label}

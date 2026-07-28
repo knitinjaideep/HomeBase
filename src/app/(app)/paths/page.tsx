@@ -7,6 +7,7 @@ import {
   useBuyerModeProfile,
   useOwnerModeProfile,
 } from "@/lib/workspace/hooks";
+import { getDefaultRouteForMode } from "@/lib/workspace/navigation";
 import { WorkspaceOnboarding } from "@/components/workspace/workspace-onboarding";
 
 /**
@@ -35,7 +36,7 @@ export default function PathsPage() {
         initialMode={initialMode}
         initialBuyer={buyer ?? null}
         initialOwner={owner ?? null}
-        onComplete={() => router.replace("/journey")}
+        onComplete={(mode) => router.replace(getDefaultRouteForMode(mode))}
         onCancel={() => router.back()}
       />
     </div>

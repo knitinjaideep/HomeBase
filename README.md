@@ -33,6 +33,9 @@ Every guided step page follows the same shape: **what it accomplishes · why it 
 - **Timeline** — the plan and reusable checklists, plus a **documents index** (records that a document exists and where it lives; no files are stored).
 - **Resources** — a curated library of primary-source links (federal, NJ, regulator, then established organizations), each with our own summary, a "report outdated" action, and a restore-curated-set option.
 - **Settings** — household members and family invitations, the household planning profile that personalizes the whole guide, plus data & backups and account sign-out.
+- **Notes** *(`/notes`)* — a small, freeform notes feature shared by both HomeScope paths (buyer and homeowner alike), for anything that doesn't belong to a more specific tool.
+
+The nav above is buyer mode. Homeowner mode (`activeMode = "owning"`, see **`docs/WORKSPACE_MODE.md`**) sees **HomeBase** (`/homebase`, its landing page) and **Maintenance** (`/maintenance`, a placeholder today — real maintenance tracking is a future PR) instead of Journey/Properties/Toolkit — the buyer-only tools (Compare, Finances, Lenders, Professionals, Resources, Timeline, and the Toolkit hub bundling them) stay buyer-only, since their content is pre-purchase specific. `src/lib/workspace/navigation.ts` is the single source of truth for which destinations exist per mode, the default landing route per mode, and route access protection (a buyer opening a homeowner-only URL, or vice versa, is redirected rather than shown the wrong experience).
 
 ## Public entry & sign-in
 
@@ -171,7 +174,7 @@ git push -u origin feature/descriptive-name
 
 A change is a *database change* if it touches, directly or via a migration file, any of: a new/changed field, a new table, RLS policies, indexes, constraints, foreign keys, Postgres functions/triggers, or Data API grants. Application code that reads/writes a new column always needs an accompanying migration — the two must land in the same PR.
 
-Migrations live in `supabase/migrations/`, applied in order (`0001_schema.sql` → `0002_functions.sql` → `0003_policies.sql` → `0004_data_api_grants.sql` → `0005_household_v2_schema.sql` → `0006_household_v2_functions.sql` → `0007_household_v2_policies.sql` → `0008_household_v2_grants.sql` → the `0009`–`0011` invite-code fixes → `0012_workspace_mode_schema.sql` → `0013_workspace_mode_policies.sql` → `0014_workspace_mode_grants.sql`, plus any new ones you add after). Full detail on what each one does and the Data API grant/RLS model lives in **`docs/SUPABASE_SETUP.md`**; the buyer/homeowner **workspace mode** foundation (why mode is stored at the workspace level) lives in **`docs/WORKSPACE_MODE.md`**. This section covers the *process*, not the schema.
+Migrations live in `supabase/migrations/`, applied in order (`0001_schema.sql` → `0002_functions.sql` → `0003_policies.sql` → `0004_data_api_grants.sql` → `0005_household_v2_schema.sql` → `0006_household_v2_functions.sql` → `0007_household_v2_policies.sql` → `0008_household_v2_grants.sql` → the `0009`–`0011` invite-code fixes → `0012_workspace_mode_schema.sql` → `0013_workspace_mode_policies.sql` → `0014_workspace_mode_grants.sql` → `0015_notes_schema.sql` → `0016_notes_policies.sql` → `0017_notes_grants.sql` → `0018_notes_backup_function.sql` (extends `import_household_backup()` to cover the new `notes` table), plus any new ones you add after). Full detail on what each one does and the Data API grant/RLS model lives in **`docs/SUPABASE_SETUP.md`**; the buyer/homeowner **workspace mode** foundation (why mode is stored at the workspace level) lives in **`docs/WORKSPACE_MODE.md`**. This section covers the *process*, not the schema.
 
 1. Create a feature branch.
 2. Implement the application code change.
@@ -443,24 +446,28 @@ src/
     login/                  # email OTP + magic-link sign-in (also serves sign-up)
     auth/callback/          # PKCE code exchange for the magic-link path
     manifest.ts icon.tsx apple-icon.tsx icons/  # PWA manifest + generated icons
-    (app)/                  # every authenticated page, wrapped by HouseholdProvider + WorkspaceGate + AppShell
-      journey/               # Journey overview (landing, "/journey") + [stageId]/ guided step pages (18 stages)
-      paths/                  # "Change path" — re-opens PR 2's onboarding, pre-filled
-      properties/             # list + [id] detail (+ per-property deal)
-      visit/[id]/              # Visit mode
-      professionals/ resources/
-      compare/ finances/ lenders/ timeline/ settings/
+    (app)/                  # every authenticated page, wrapped by HouseholdProvider + WorkspaceGate + AppShell;
+                              #   AppShell/AppNav/BottomNav render per-mode via lib/workspace/navigation.ts
+      journey/               # buyer: Journey overview (landing, "/journey") + [stageId]/ guided step pages (18 stages)
+      properties/             # buyer: list + [id] detail (+ per-property deal)
+      visit/[id]/              # buyer: Visit mode
+      professionals/ resources/ compare/ finances/ lenders/ timeline/ toolkit/  # buyer-only tools
+      homebase/ maintenance/    # homeowner: landing page + maintenance placeholder (see docs/WORKSPACE_MODE.md)
+      notes/                  # shared by both modes — freeform notes
+      paths/                  # "Change path" — re-opens the onboarding flow, pre-filled
+      settings/
     layout.tsx globals.css
   components/
     ui.tsx                  # primitives (Button, Panel, Field, BandPill, SaveIndicator …)
     marketing/               # public welcome page + /get-started (header, hero, principles, footer)
-    workspace/                # PR 2 path cards, buyer/owner onboarding forms, WorkspaceGate
+    workspace/                # path cards, buyer/owner onboarding forms, WorkspaceGate
     journey/ professional/ documents/ property/deal-section.tsx lender/approvals.tsx
     migration-banner.tsx    # the one-time "Local Home data found" import flow
-    modal.tsx toast.tsx app-nav.tsx app-shell.tsx providers.tsx …
+    modal.tsx toast.tsx app-nav.tsx app-shell.tsx bottom-nav.tsx providers.tsx …
   lib/
     supabase/               # browser client, server client, middleware helper
     workspace/                # buyer/homeowner mode: resolver, service, hooks, onboarding-gate,
+                              #   navigation.ts (per-mode nav config + route protection), mode-context.tsx,
                               #   provisional-path.ts (pre-auth path hint) — see docs/WORKSPACE_MODE.md
     household/               # HouseholdProvider (bootstrap + new-household seeding), current-household id
     data/                    # use-query.ts (fetch/refetch primitive), invalidation.ts, save-status.ts, draft.ts

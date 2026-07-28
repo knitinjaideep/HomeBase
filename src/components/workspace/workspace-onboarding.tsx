@@ -29,7 +29,7 @@ export function WorkspaceOnboarding({
   initialBuyer,
   initialOwner,
 }: {
-  onComplete: () => void;
+  onComplete: (mode: WorkspaceMode) => void;
   onCancel?: () => void;
   initialMode?: WorkspaceMode | null;
   initialBuyer?: BuyerModeProfile | null;
@@ -51,7 +51,7 @@ export function WorkspaceOnboarding({
     setError(null);
     try {
       await finishBuyerOnboarding(values);
-      onComplete();
+      onComplete("buying");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save your selection.");
       setBusy(false);
@@ -63,7 +63,7 @@ export function WorkspaceOnboarding({
     setError(null);
     try {
       await finishOwnerOnboarding(values);
-      onComplete();
+      onComplete("owning");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save your selection.");
       setBusy(false);

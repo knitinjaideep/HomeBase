@@ -1,8 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useActiveWorkspace } from "@/lib/workspace/hooks";
 import { resolvePathGate } from "@/lib/workspace/onboarding-gate";
+import { getDefaultRouteForMode, isRouteAvailableForMode } from "@/lib/workspace/navigation";
+import { ActiveModeProvider } from "@/lib/workspace/mode-context";
 import { clearProvisionalPath, readProvisionalPath } from "@/lib/workspace/provisional-path";
 import { WorkspaceOnboarding } from "./workspace-onboarding";
 
@@ -16,8 +18,15 @@ import { WorkspaceOnboarding } from "./workspace-onboarding";
  *   app            → the normal application
  *
  * On completion the service invalidates the workspace row, so `useActiveWorkspace`
- * refetches, the gate re-resolves to "app", and we send the user to the
- * dashboard. A returning user with a mode already set never sees this.
+ * refetches, the gate re-resolves to "app", and we send the user to that
+ * mode's default destination (`getDefaultRouteForMode`) — Journey for a
+ * buyer, HomeBase for a homeowner. A returning user with a mode already set
+ * never sees this.
+ *
+ * Once in the "app" state, this is also where mode-based route protection
+ * lives: a buyer on a homeowner-only URL (or vice versa) is redirected to
+ * their mode's default route rather than rendering the wrong experience —
+ * see `isRouteAvailableForMode` in lib/workspace/navigation.ts.
  *
  * If the visitor picked a path on /get-started before they had an account, it
  * is passed here as `initialMode` so the path step opens pre-selected instead
@@ -25,6 +34,7 @@ import { WorkspaceOnboarding } from "./workspace-onboarding";
  */
 export function WorkspaceGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const view = useActiveWorkspace();
   const state = resolvePathGate(view);
 
@@ -40,13 +50,23 @@ export function WorkspaceGate({ children }: { children: React.ReactNode }) {
     return (
       <WorkspaceOnboarding
         initialMode={readProvisionalPath()}
-        onComplete={() => {
+        onComplete={(mode) => {
           clearProvisionalPath();
-          router.replace("/journey");
+          router.replace(getDefaultRouteForMode(mode));
         }}
       />
     );
   }
 
-  return <>{children}</>;
+  // state === "app": view is guaranteed to be resolved with a selected mode here.
+  if (!isRouteAvailableForMode(pathname, view!.mode)) {
+    router.replace(getDefaultRouteForMode(view!.mode));
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
+        <div className="animate-fade-in text-ink-subtle">Loading your HomeScope…</div>
+      </div>
+    );
+  }
+
+  return <ActiveModeProvider mode={view!.mode}>{children}</ActiveModeProvider>;
 }
