@@ -3,6 +3,7 @@
 import type { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
 import { useHouseholdContext } from "@/lib/household/context";
+import { listHouseholdInvites, listHouseholdMembers } from "@/lib/household/api";
 import { useQuery } from "@/lib/data/use-query";
 import {
   appSettingsSchema,
@@ -222,4 +223,22 @@ export function useDeals() {
 export function useDealForProperty(propertyId: string | undefined) {
   const rows = useFilteredCollection("deals", dealSchema, "propertyId", propertyId);
   return rows?.[0];
+}
+
+// ---- Household membership & invites ---------------------------------------
+// Bespoke, not the useCollection/useRow factories above: these read through
+// SECURITY DEFINER RPCs / a household_invites select (see lib/household/api.ts),
+// not a plain `.from(table).eq("householdId", ...)` read.
+
+export function useHouseholdMembers() {
+  const { householdId } = useHouseholdContext();
+  return useQuery(() => listHouseholdMembers(), { deps: [householdId], watch: ["householdMembers"] });
+}
+
+export function useHouseholdInvites() {
+  const { householdId } = useHouseholdContext();
+  return useQuery(() => listHouseholdInvites(householdId), {
+    deps: [householdId],
+    watch: ["householdInvites"],
+  });
 }

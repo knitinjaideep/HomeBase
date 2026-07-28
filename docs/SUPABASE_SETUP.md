@@ -39,6 +39,16 @@ Migrations live in `supabase/migrations/` and are applied in order:
 - `0004_data_api_grants.sql` — explicit Postgres `GRANT`s for the Data API.
   **Required even though RLS is enabled** — see "Data API access" below for
   why this is a separate layer.
+- `0005_household_v2_schema.sql` — a `role` column on `household_members`,
+  restructures `household_invites` from email-preauthorization to hashed
+  one-time codes, and adds `user_preferences` (the active-household pointer).
+- `0006_household_v2_functions.sql` — redefines `bootstrap_household()` to
+  stop auto-creating households, plus `create_household()`,
+  `generate_family_invite()`, `redeem_family_invite()`,
+  `revoke_family_invite()`, and `list_household_members()`.
+- `0007_household_v2_policies.sql` — updates `household_invites` policies for
+  the code-based model (all writes now go through the 0006 functions).
+- `0008_household_v2_grants.sql` — `EXECUTE` grants for the 0006 functions.
 
 Apply them with the Supabase CLI:
 
@@ -82,15 +92,27 @@ Once a session exists, `HouseholdProvider` (`src/lib/household/context.tsx`)
 runs once per sign-in:
 
 1. Confirms the session (`supabase.auth.getUser()`).
-2. Calls the `bootstrap_household()` RPC, which returns the caller's
-   household id — creating one, or joining one via a pending invite, if
-   they don't have one yet.
-3. Checks whether that household has an `appSettings` row; if not, seeds
-   starter content (`src/lib/seed/cloud.ts`).
-4. Publishes the household id (`setCurrentHouseholdId`) so the rest of the
+2. Calls the `bootstrap_household()` RPC, which **resolves** (never creates)
+   the caller's active household: their stored `user_preferences` pointer if
+   still valid, else their sole membership, else `null` if they have none.
+3. If `null`, renders the onboarding screen (`src/components/onboarding/
+   household-onboarding.tsx`) — **Create a household** (`create_household()`,
+   always seeds starter content) or **Join a household**
+   (`redeem_family_invite(code)`, never seeds — the joined household already
+   has real data).
+4. Otherwise, checks whether the resolved household has an `appSettings` row;
+   if not, seeds starter content (`src/lib/seed/cloud.ts`) — this only fires
+   for a household created before this seeding logic existed, or an
+   interrupted first seed; a normally-created household is already seeded by
+   step 3.
+5. Publishes the household id (`setCurrentHouseholdId`) so the rest of the
    app can load household-scoped data.
 
-No household-scoped query runs before this sequence completes.
+No household-scoped query runs before this sequence completes. Being
+signed in to Supabase Auth is authentication only — it never implies
+household authorization; see `src/lib/household/api.ts` for the invite
+generate/redeem/revoke wrappers and `supabase/migrations/0006_household_v2_functions.sql`
+for the underlying `SECURITY DEFINER` functions.
 
 ### Email OTP configuration (manual Dashboard step)
 
@@ -121,6 +143,21 @@ Add `{{ .Token }}` to the body. Minimal recommended template:
 
 This is a Supabase project setting, not application code — it can't be
 applied from this repo.
+
+### Why one person might see "Confirm your email" instead of a code
+
+Supabase Auth uses a **second, separate** hosted template for the exact same
+`signInWithOtp()` call: the very first time it creates a brand-new
+`auth.users` row (i.e. `shouldCreateUser` actually creating an account), it
+sends **Confirm signup**, not Magic Link. Every subsequent sign-in for that
+same person uses Magic Link. If only Magic Link has been customized with
+`{{ .Token }}`, a returning user gets the code-style email while a
+brand-new sign-in gets Supabase's untouched default "Confirm your email"
+copy — both still work (the code is in the URL either way, and clicking the
+link also completes sign-in), but the wording is inconsistent.
+
+**Dashboard → Authentication → Email Templates → Confirm signup** — add the
+same `{{ .Token }}` edit shown above so both templates read consistently.
 
 ## Data API access
 
@@ -233,5 +270,52 @@ select p.proname, p.prosecdef as security_definer, p.proconfig
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public'
-  and p.proname in ('is_household_member', 'bootstrap_household', 'import_household_backup');
+  and p.proname in (
+    'is_household_member', 'bootstrap_household', 'import_household_backup',
+    'create_household', 'generate_family_invite', 'redeem_family_invite',
+    'revoke_family_invite', 'list_household_members'
+  );
 ```
+
+## Household invite verification (manual checklist)
+
+There is no automated RLS test suite in this repo (no local Postgres/Docker
+setup — see `vitest.config.ts` and the app-logic tests under
+`src/lib/household/` and `src/lib/models/household.test.ts` for what *is*
+automated: code normalization and schema validation, not database
+authorization itself). Run these by hand in the Supabase SQL Editor (or via
+`supabase.rpc(...)` calls from two real signed-in browser sessions) after
+applying `0005`–`0008` and before relying on this in production:
+
+```sql
+-- user_preferences must have zero Data API grants — every access should be
+-- through the SECURITY DEFINER functions only.
+select table_name, grantee, privilege_type
+from information_schema.role_table_grants
+where table_schema = 'public' and table_name = 'user_preferences';
+-- expect: zero rows
+```
+
+Functional checklist (two real test accounts, A and B):
+
+1. **Happy path** — A calls `generate_family_invite()`, gets a code; B calls
+   `redeem_family_invite(code)` and receives A's household id; B now appears
+   in A's `list_household_members()`.
+2. **Already redeemed** — B calls `redeem_family_invite(code)` again with the
+   same code → fails with the generic "Invalid, expired, or already-used"
+   message.
+3. **Expired** — manually backdate an invite's `expires_at` to the past
+   (`update household_invites set expires_at = now() - interval '1 minute'
+   where id = '<id>';`) and confirm redemption fails.
+4. **Revoked** — A generates a new invite, calls `revoke_family_invite(id)`,
+   then confirms redemption of that code fails.
+5. **Race / double-redemption** — fire two `redeem_family_invite(code)` calls
+   for the same still-valid code back to back (two SQL Editor tabs, or two
+   `supabase.rpc()` calls in quick succession from two sessions); confirm
+   exactly one succeeds and the other raises.
+6. **Cross-household isolation** — confirm a member of household X never
+   appears in household Y's `list_household_members()`, and that X's pending
+   invites never appear in Y's `household_invites` select.
+7. **No implicit household** — a brand-new `auth.users` row with zero
+   `household_members` rows: confirm `bootstrap_household()` returns `null`
+   (not a newly-created household).

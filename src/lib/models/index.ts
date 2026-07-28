@@ -31,6 +31,7 @@ export * from "./professional";
 export * from "./resource";
 export * from "./document";
 export * from "./deal";
+export * from "./household";
 
 /**
  * The complete backup envelope for export/import. Every array is validated with

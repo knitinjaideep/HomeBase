@@ -32,7 +32,7 @@ Every guided step page follows the same shape: **what it accomplishes · why it 
 - **Professionals** — a role-based directory with interview banks, agent licence/experience verification, an agent scorecard, and a deliberate select-one-per-role workflow.
 - **Timeline** — the plan and reusable checklists, plus a **documents index** (records that a document exists and where it lives; no files are stored).
 - **Resources** — a curated library of primary-source links (federal, NJ, regulator, then established organizations), each with our own summary, a "report outdated" action, and a restore-curated-set option.
-- **Settings** — the household planning profile that personalizes the whole guide, plus data & backups and account sign-out.
+- **Settings** — household members and family invitations, the household planning profile that personalizes the whole guide, plus data & backups and account sign-out.
 
 ## Personalized next-action engine
 
@@ -98,7 +98,7 @@ cp .env.example .env.local   # fill in your Supabase project URL + publishable k
 npm run dev                  # http://localhost:3000
 ```
 
-You'll be redirected to `/login` until you sign in (email code or magic link). The first sign-in creates your household and seeds a blank planning profile, three clearly-marked **SAMPLE** properties, the timeline, and the reusable checklists.
+You'll be redirected to `/login` until you sign in (email code or magic link). Signing in only proves *who you are* — it doesn't by itself grant access to any household's data. The first time you sign in with no household yet, you'll see a **Welcome to HomeScope** screen: **Create a household** (seeds a blank planning profile, three clearly-marked **SAMPLE** properties, the timeline, and the reusable checklists) or **Join a household** (enter an invitation code from an existing member — see "Household membership & family invites" below).
 
 Required environment variables (see "Environment variables" for the full table — no values shown here, only names):
 
@@ -164,7 +164,7 @@ git push -u origin feature/descriptive-name
 
 A change is a *database change* if it touches, directly or via a migration file, any of: a new/changed field, a new table, RLS policies, indexes, constraints, foreign keys, Postgres functions/triggers, or Data API grants. Application code that reads/writes a new column always needs an accompanying migration — the two must land in the same PR.
 
-Migrations live in `supabase/migrations/`, applied in order (`0001_schema.sql` → `0002_functions.sql` → `0003_policies.sql` → `0004_data_api_grants.sql`, plus any new ones you add after). Full detail on what each one does and the Data API grant/RLS model lives in **`docs/SUPABASE_SETUP.md`** — this section covers the *process*, not the schema.
+Migrations live in `supabase/migrations/`, applied in order (`0001_schema.sql` → `0002_functions.sql` → `0003_policies.sql` → `0004_data_api_grants.sql` → `0005_household_v2_schema.sql` → `0006_household_v2_functions.sql` → `0007_household_v2_policies.sql` → `0008_household_v2_grants.sql`, plus any new ones you add after). Full detail on what each one does and the Data API grant/RLS model lives in **`docs/SUPABASE_SETUP.md`** — this section covers the *process*, not the schema.
 
 1. Create a feature branch.
 2. Implement the application code change.
@@ -220,6 +220,29 @@ All policies are scoped `to authenticated` explicitly. A signed-in user's claime
 
 **To safely add a new household-owned table:** add it to `0001_schema.sql`-style migration with a `"householdId"` column referencing `households(id)`, then add matching `enable row level security` + four policies (select/insert/update/delete, all gated on `is_household_member("householdId")`) in a new migration alongside the equivalent `GRANT ... to authenticated` — see `0003_policies.sql` and `0004_data_api_grants.sql` for the exact pattern to copy. A new table isn't done until both layers exist; RLS alone still returns `403` without the grant.
 
+## Household membership & family invites
+
+Authentication (Supabase Auth — "who are you?") and household authorization ("what can you see?") are deliberately separate. A signed-in user with no household membership sees the **Welcome to HomeScope** onboarding screen, never another household's data and never an implicitly-created empty one.
+
+- **`bootstrap_household()`** (called once per sign-in by `HouseholdProvider`) resolves the caller's *active* household from `user_preferences.active_household_id` (falling back to their sole membership, or their most-recently-joined one if they somehow have several) and returns it — or `null` if they have none. It never creates a household as a side effect.
+- **Create a household** (`create_household()`) — explicit, onboarding-only. The caller becomes its `owner`.
+- **Invite a family member** (Settings → Household members → *Invite family member*, calling `generate_family_invite()`) — generates a 16-character code (`K7FD-M9QX-4R2P` style, ~80 bits of entropy, unambiguous alphabet), shows it **once**, and stores only its SHA-256 hash. Expires in 24 hours, usable once. Any existing member can invite (not owner-only — see the migration's comment on why) and revoke a still-pending invite.
+- **Join a household** (`redeem_family_invite(code)`) — atomic, race-safe (a second simultaneous redemption attempt simply fails), sets `role = 'member'`, and switches the caller's active household to the one just joined. Invalid, expired, revoked, and already-used codes all fail with the same generic message.
+- **`list_household_members()`** is the one place the app reads another member's email — a `SECURITY DEFINER` function scoped strictly to the caller's own active household; `auth.users` is never exposed to the client directly.
+
+None of this is in the JSON backup/export — membership and invitations are security metadata, not household content.
+
+### Repairing an account stuck on the wrong household
+
+If someone signed in before an invite existed for them, `bootstrap_household()`'s old behavior (since replaced) would have created them their own empty household. To fix it without losing anything:
+
+1. Confirm the account with the real data still sees it after signing in.
+2. That account → **Settings → Household members → Invite family member** → copy the code.
+3. The other account signs in with their existing Supabase login, sees the onboarding screen (their old accidental household is untouched, just no longer selected) → **Join a household** → enters the code.
+4. Their active household switches to the real one; the real data appears immediately.
+5. Each account makes one harmless test edit and confirms the other sees it after a refocus/reload.
+6. The old accidental household is left alone — deciding whether/how to clean it up later is a separate, deliberate action, never automatic.
+
 ## Environment variables
 
 | Variable | Required locally? | Required in Vercel? | Public or secret? | Purpose |
@@ -240,7 +263,7 @@ Any variable prefixed `NEXT_PUBLIC_` is bundled into client-side JavaScript and 
 Some authentication configuration lives in the Supabase Dashboard, not in this Git repository, and changing it does **not** require (or trigger) a Vercel deployment unless application code also changes:
 
 - **Site URL** and **Redirect URLs** (Dashboard → Authentication → URL Configuration). Production Site URL should be `https://home.nitinkotcherlakota.com`; Redirect URLs must include `https://home.nitinkotcherlakota.com/auth/callback` and `http://localhost:3000/auth/callback` for local dev (see "Vercel preview deployments" below for the Preview-URL caveat).
-- **Email templates** — the Magic Link template needs `{{ .Token }}` added for the OTP code to actually appear in the email; see `docs/SUPABASE_SETUP.md` → "Email OTP configuration" for the exact template.
+- **Email templates** — Supabase uses **two separate templates** for `signInWithOtp`, and both need `{{ .Token }}` added, or you'll see inconsistent emails depending on whether the recipient is a brand-new or returning `auth.users` row: **Magic Link** (existing users) and **Confirm signup** (a person's very first sign-in, when `shouldCreateUser` creates their account). See `docs/SUPABASE_SETUP.md` → "Email OTP configuration" for the exact template for both.
 - **SMTP configuration / OTP settings.**
 
 The application's own callback route (`src/app/auth/callback/route.ts`) always redirects relative to the request's own origin — it has no hardcoded host — so it works unmodified in local dev, Preview, and Production; only the Supabase-side Redirect URL allow-list needs to know about each host.

@@ -158,6 +158,10 @@ inspect the existing RLS policies first.
 
 Any new user-owned or household-owned table must have appropriate RLS before being considered complete.
 
+Households are never created implicitly on sign-in. Authentication (Supabase Auth) is not household authorization — an authenticated user with no membership must see onboarding, never another household's data and never a silently auto-created empty one.
+
+A user's active household must always be re-resolved server-side from real membership rows (never trusted from client state or a client-supplied household id) before any household-scoped data is shown.
+
 Secrets
 
 Never expose or commit secrets.
