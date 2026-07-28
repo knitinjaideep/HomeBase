@@ -4,6 +4,7 @@ import type {
   ApprovalKind,
   DocumentCategory,
   DocumentStatus,
+  HouseholdRole,
   JourneyStatus,
   ProfessionalRole,
   SelectionStatus,
@@ -219,4 +220,11 @@ export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
   gathered: "Gathered",
   submitted: "Submitted",
   "not-applicable": "Not applicable",
+};
+
+// ---- Household --------------------------------------------------------
+
+export const HOUSEHOLD_ROLE_LABELS: Record<HouseholdRole, string> = {
+  owner: "Owner",
+  member: "Member",
 };
