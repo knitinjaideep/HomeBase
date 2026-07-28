@@ -28,6 +28,7 @@ import {
   lenderQuoteSchema,
   mortgageApprovalSchema,
   mortgageScenarioSchema,
+  noteSchema,
   professionalSchema,
   propertySchema,
   propertyVisitSchema,
@@ -49,6 +50,7 @@ import {
   type LenderQuote,
   type MortgageApproval,
   type MortgageScenario,
+  type Note,
   type Professional,
   type Property,
   type PropertyVisit,
@@ -645,6 +647,23 @@ export async function updateDocument(id: string, patch: Partial<DocumentRecord>)
 
 export async function deleteDocument(id: string): Promise<void> {
   await removeRow("documents", id);
+}
+
+// ---- Notes (shared across buyer and homeowner mode) -----------------------
+
+export async function createNote(input: Partial<Note> & { body: string }): Promise<Note> {
+  const ts = now();
+  const note = noteSchema.parse({ ...input, id: newId(), createdAt: ts, updatedAt: ts });
+  await insertRow("notes", note);
+  return note;
+}
+
+export async function updateNote(id: string, patch: Partial<Note>): Promise<void> {
+  await patchRow("notes", id, patch);
+}
+
+export async function deleteNote(id: string): Promise<void> {
+  await removeRow("notes", id);
 }
 
 // ---- Deals (per-property, stages 12–18) -----------------------------------

@@ -16,6 +16,8 @@ const config: Config = {
         "ink-subtle": "rgb(var(--ink-subtle) / <alpha-value>)",
         accent: "rgb(var(--accent) / <alpha-value>)",
         "accent-soft": "rgb(var(--accent-soft) / <alpha-value>)",
+        "mode-accent": "rgb(var(--mode-accent) / <alpha-value>)",
+        "mode-accent-muted": "rgb(var(--mode-accent-muted) / <alpha-value>)",
         positive: "rgb(var(--positive) / <alpha-value>)",
         caution: "rgb(var(--caution) / <alpha-value>)",
         critical: "rgb(var(--critical) / <alpha-value>)",
