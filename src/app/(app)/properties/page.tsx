@@ -8,6 +8,7 @@ import { Button, EmptyState, Input, Select } from "@/components/ui";
 import { Overlay } from "@/components/modal";
 import { PropertyCard } from "@/components/property/property-card";
 import { PropertyForm } from "@/components/property/property-form";
+import { propertyMatchesSearch } from "@/lib/property-search";
 import { cn } from "@/lib/util";
 
 type SortOption = "newest" | "oldest" | "price-asc" | "price-desc" | "score-desc";
@@ -51,16 +52,12 @@ export default function PropertiesPage() {
 
   const visible = useMemo(() => {
     if (!properties || !financial || !household) return [];
-    const q = search.trim().toLowerCase();
     const activeFilter = FILTERS.find((f) => f.key === filter);
 
     const withEval = properties
       .filter((p) => (showArchived ? p.isArchived : !p.isArchived))
       .filter((p) => (activeFilter?.statuses ? activeFilter.statuses.includes(p.status) : true))
-      .filter((p) => {
-        if (!q) return true;
-        return p.address.toLowerCase().includes(q) || p.town.toLowerCase().includes(q);
-      })
+      .filter((p) => propertyMatchesSearch(p, search))
       .map((p) => ({ p, e: evaluateProperty(p, financial, household) }));
 
     const value = (item: { p: Property; e: ReturnType<typeof evaluateProperty> }): number | null => {

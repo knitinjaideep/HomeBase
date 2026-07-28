@@ -8,8 +8,9 @@ import {
   type Path,
   type UseFormRegister,
 } from "react-hook-form";
-import { type Property } from "@/lib/models";
-import { newProperty, saveProperty } from "@/lib/repo";
+import { type Property, type PropertyFormValues } from "@/lib/models";
+import { saveProperty } from "@/lib/repo";
+import { emptyPropertyForm, prepareProperty, propertyToForm } from "@/lib/property-form";
 import { Button, Field, Input, RatingInput, Select, Textarea } from "@/components/ui";
 import {
   LISTING_STATUS_LABELS,
@@ -57,8 +58,11 @@ export function PropertyForm({
 }) {
   const { notify } = useToast();
   const saveStatus = useSaveStatus();
-  const defaults = useMemo<Property>(
-    () => property ?? newProperty({ address: "" }),
+  // Plain draft values — a blank draft renders immediately and never runs
+  // persisted validation during render. Edit mode starts from the record's
+  // real values; switching records re-derives defaults via the [property] dep.
+  const defaults = useMemo<PropertyFormValues>(
+    () => (property ? propertyToForm(property) : emptyPropertyForm()),
     [property],
   );
 
@@ -66,12 +70,25 @@ export function PropertyForm({
     register,
     control,
     handleSubmit,
+    setError,
     formState: { errors },
-  } = useForm<Property>({ defaultValues: defaults });
+  } = useForm<PropertyFormValues>({ defaultValues: defaults });
 
   const onSubmit = handleSubmit(async (values) => {
-    // Merge over the complete defaults so unregistered base fields are preserved.
-    const result = await saveStatus.run(() => saveProperty({ ...defaults, ...values }));
+    if (saveStatus.status === "saving") return; // guard against duplicate submits
+
+    // Validate the complete property only at save time (safeParse — never throws).
+    const prepared = prepareProperty(values, property);
+    if (!prepared.ok) {
+      if ("addressError" in prepared) {
+        setError("address", { type: "validate", message: prepared.addressError });
+      } else {
+        notify(prepared.formError);
+      }
+      return;
+    }
+
+    const result = await saveStatus.run(() => saveProperty(prepared.property));
     if (result.ok) {
       notify("Property saved");
       onDone();
@@ -87,7 +104,7 @@ export function PropertyForm({
           <Field label="Address" className="sm:col-span-2">
             <Input
               placeholder="123 Example Street"
-              {...register("address", { required: "Address is required" })}
+              {...register("address", { required: "Enter a property address." })}
             />
             {errors.address && (
               <span className="mt-1 block text-xs text-critical">{errors.address.message}</span>
@@ -175,7 +192,7 @@ export function PropertyForm({
       </FormSection>
 
       <FormSection title="Features & condition" hint="Rate 1–5. Leave blank until you have seen it.">
-        <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
           {RATING_FIELDS.map((f) => (
             <RatingRow key={f.key} control={control} name={`ratings.${f.key}`} label={f.label} />
           ))}
@@ -263,8 +280,8 @@ function TextRow({
   name,
   label,
 }: {
-  register: UseFormRegister<Property>;
-  name: Path<Property>;
+  register: UseFormRegister<PropertyFormValues>;
+  name: Path<PropertyFormValues>;
   label: string;
 }) {
   return (
@@ -280,8 +297,8 @@ function NumRow({
   label,
   step,
 }: {
-  register: UseFormRegister<Property>;
-  name: Path<Property>;
+  register: UseFormRegister<PropertyFormValues>;
+  name: Path<PropertyFormValues>;
   label: string;
   step?: string;
 }) {
@@ -298,8 +315,8 @@ function SelectRow({
   label,
   options,
 }: {
-  register: UseFormRegister<Property>;
-  name: Path<Property>;
+  register: UseFormRegister<PropertyFormValues>;
+  name: Path<PropertyFormValues>;
   label: string;
   options: Record<string, string>;
 }) {
@@ -321,12 +338,12 @@ function RatingRow({
   name,
   label,
 }: {
-  control: Control<Property>;
-  name: Path<Property>;
+  control: Control<PropertyFormValues>;
+  name: Path<PropertyFormValues>;
   label: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex flex-col items-start gap-2">
       <span className="text-sm text-ink">{label}</span>
       <Controller
         control={control}
