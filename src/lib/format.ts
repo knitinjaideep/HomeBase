@@ -66,3 +66,17 @@ export function titleCase(value: string): string {
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 }
+
+/** A relative expiry label for an ISO timestamp, e.g. "Expires in 18h", "Expired". */
+export function expiresInLabel(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const target = new Date(iso).getTime();
+  if (Number.isNaN(target)) return "—";
+  const diffMs = target - Date.now();
+  if (diffMs <= 0) return "Expired";
+  const hours = diffMs / (60 * 60 * 1000);
+  if (hours < 1) return "Expires in under an hour";
+  if (hours < 24) return `Expires in ${Math.round(hours)}h`;
+  const days = Math.round(hours / 24);
+  return `Expires in ${days}d`;
+}

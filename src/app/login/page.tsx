@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Callout, Field, Input, Panel } from "@/components/ui";
+import { readProvisionalPath } from "@/lib/workspace/provisional-path";
+import { cn } from "@/lib/util";
+import type { WorkspaceMode } from "@/lib/models";
 
 type Step = "email" | "code";
 
@@ -18,6 +21,14 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resent, setResent] = useState(false);
+  // Read-only echo of the /get-started choice (if any) — purely reassurance
+  // that it wasn't lost on the handoff to this page; WorkspaceGate is what
+  // actually applies it after sign-in.
+  const [provisionalMode, setProvisionalMode] = useState<WorkspaceMode | null>(null);
+
+  useEffect(() => {
+    setProvisionalMode(readProvisionalPath());
+  }, []);
 
   async function requestCode(): Promise<boolean> {
     const supabase = createClient();
@@ -90,6 +101,16 @@ export default function LoginPage() {
         <p className="mt-2 text-sm text-ink-muted">
           A private home-buying tracker for your household.
         </p>
+        {provisionalMode && (
+          <span
+            className={cn(
+              "mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium",
+              provisionalMode === "buying" ? "bg-accent-soft text-accent" : "bg-caution/15 text-caution",
+            )}
+          >
+            Continuing as {provisionalMode === "buying" ? "a buyer" : "a homeowner"}
+          </span>
+        )}
       </div>
 
       <Panel className="p-6">

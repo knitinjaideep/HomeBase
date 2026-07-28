@@ -8,27 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getDefaultRouteForMode, getNavigationForMode, isNavItemActive } from "@/lib/workspace/navigation";
 import type { ResolvedMode } from "@/lib/workspace/resolver";
 
-<<<<<<< Updated upstream
-const NAV = [
-  { href: "/", label: "Journey" },
-  { href: "/properties", label: "Homes" },
-  { href: "/toolkit", label: "Toolkit" },
-];
-
-/** Routes reached through the Toolkit hub, even though their URLs are not nested under it. */
-const TOOLKIT_ROUTES = ["/toolkit", "/compare", "/finances", "/lenders", "/professionals", "/resources", "/timeline"];
-
-function isActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/" || pathname.startsWith("/journey");
-  if (href === "/properties") return pathname.startsWith("/properties") || pathname.startsWith("/visit");
-  if (href === "/toolkit") return TOOLKIT_ROUTES.some((r) => pathname === r || pathname.startsWith(`${r}/`));
-  return pathname === href;
-}
-
-export function AppNav() {
-=======
 export function AppNav({ mode }: { mode: ResolvedMode }) {
->>>>>>> Stashed changes
   const pathname = usePathname();
   const router = useRouter();
   const [theme, setTheme] = useTheme();
@@ -42,18 +22,17 @@ export function AppNav({ mode }: { mode: ResolvedMode }) {
   const signOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/login");
+    // Signing out returns to the public welcome page, not straight to /login
+    // (see the public-welcome-page work) — "/" now renders that page for a
+    // logged-out visitor instead of forcing them through the login form.
+    router.push("/");
     router.refresh();
   };
 
   return (
     <header className="no-print sticky top-0 z-30 border-b border-line bg-canvas/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-content items-center justify-between gap-4 px-4 sm:px-6">
-<<<<<<< Updated upstream
-        <Link href="/" className="font-display shrink-0 text-lg text-ink">
-=======
         <Link href={getDefaultRouteForMode(mode)} className="font-display shrink-0 text-lg text-ink">
->>>>>>> Stashed changes
           HomeScope
         </Link>
 

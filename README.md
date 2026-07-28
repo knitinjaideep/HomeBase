@@ -24,7 +24,7 @@ Every guided step page follows the same shape: **what it accomplishes · why it 
 
 ## Navigation
 
-- **Journey** *(landing page)* — current stage, weighted overall progress, target closing window, next recommended actions, blocking items, decisions awaiting input, recently completed milestones, five readiness meters (financial, mortgage, team, search, offer), and the full 18-stage roadmap. The former dashboard's key figures live here.
+- **Journey** *(`/journey`, the signed-in landing page)* — current stage, weighted overall progress, target closing window, next recommended actions, blocking items, decisions awaiting input, recently completed milestones, five readiness meters (financial, mortgage, team, search, offer), and the full 18-stage roadmap. The former dashboard's key figures live here. (`/`, the site root, is the logged-out public welcome page — see "Public entry & sign-in" below.)
 - **Properties** — add / edit / archive / restore / delete, per-property cost estimates, guardrail banding, missing-info flags, a printable report, and a per-property **deal** covering stages 12–18 (offer readiness, negotiation log, attorney review, inspections, financing, closing prep, post-closing) with a prominent private **walk-away price**.
 - **Compare** — 2–5 properties side by side; most-favorable cell marked per row (never an automatic winner).
 - **Finances** — a transparent mortgage & cash planner with named, duplicable scenarios.
@@ -32,9 +32,6 @@ Every guided step page follows the same shape: **what it accomplishes · why it 
 - **Professionals** — a role-based directory with interview banks, agent licence/experience verification, an agent scorecard, and a deliberate select-one-per-role workflow.
 - **Timeline** — the plan and reusable checklists, plus a **documents index** (records that a document exists and where it lives; no files are stored).
 - **Resources** — a curated library of primary-source links (federal, NJ, regulator, then established organizations), each with our own summary, a "report outdated" action, and a restore-curated-set option.
-<<<<<<< Updated upstream
-- **Settings** — the household planning profile that personalizes the whole guide, plus data & backups and account sign-out.
-=======
 - **Settings** — household members and family invitations, the household planning profile that personalizes the whole guide, plus data & backups and account sign-out.
 - **Notes** *(`/notes`)* — a small, freeform notes feature shared by both HomeScope paths (buyer and homeowner alike), for anything that doesn't belong to a more specific tool.
 
@@ -46,7 +43,6 @@ The nav above is buyer mode. Homeowner mode (`activeMode = "owning"`, see **`doc
 - **`/get-started`** — also public. Reuses PR 2's `PathSelectionCards` unmodified (no second copy of that UI) to let a new visitor pick buyer/homeowner *before* signing in. The choice is stored client-side only (`lib/workspace/provisional-path.ts`, the same narrow localStorage convention as the theme preference) and read back by `WorkspaceGate` after sign-in to pre-select the same step in the real (PR 2) onboarding flow, instead of asking twice. It is a UI hint only — the workspace row in Supabase remains the sole source of truth for the actual mode.
 - **`/login`** — unchanged. One Supabase email-OTP form that already serves as both sign-in *and* sign-up (`shouldCreateUser: true`); there is no separate password-based registration and, by design, no "this email already exists" signal for OTP auth (Supabase intentionally answers new and existing emails identically to prevent account enumeration).
 - Both `/` and `/get-started` are listed in `middleware.ts`'s public paths — each page resolves the session itself (via the Supabase **server** client) and redirects an authenticated visitor into the app, rather than middleware special-casing them.
->>>>>>> Stashed changes
 
 ## Personalized next-action engine
 
@@ -60,70 +56,75 @@ This app deliberately does **not** include: a chatbot or any LLM/AI features, RA
 
 ---
 
-## Tech stack
+## Architecture
 
-- **Next.js 15** (App Router)
-- **TypeScript** (strict)
-- **Tailwind CSS 3**
-- **React Hook Form** for forms
-- **Zod** for schemas and import/export validation
-- **Supabase** — Postgres (with Row Level Security), Auth (email OTP / magic link), via `@supabase/supabase-js` and `@supabase/ssr`
-- **Dexie** (IndexedDB) — kept only as a *read-only legacy store* for the one-time local-data migration (see "Cloud setup" below); nothing in the live app writes to it anymore
-- `localStorage` — small per-device UI preferences (theme) and temporary unsaved-form drafts only
-- **Vitest** for tests
+- **Next.js 15** (App Router, TypeScript, strict mode)
+- **Supabase** — Postgres with Row Level Security, Auth (email OTP), via `@supabase/supabase-js` / `@supabase/ssr`
+- **Vercel** — hosting, Preview Deployments (per PR/branch) and Production Deployment (on merge to `main`), custom domain
+- **GitHub Actions** — CI quality gate (lint, typecheck, test, build) on every PR and on `main`
 
-No Express/FastAPI backend, no ORM, no microservices, no analytics. Next.js anonymous CLI telemetry has been disabled for this project.
+```
+Browser / PWA
+      ↓
+Next.js (App Router)
+      ↓
+Supabase Auth (email OTP)  +  Postgres (Row Level Security)
 
-## Local setup
+GitHub                              Vercel
+  main branch                         │
+  feature/*, fix/*, chore/* branches  │
+      ↓                               │
+  Pull Request → main                 │
+      ↓                               │
+  GitHub Actions ("HomeScope CI")     │
+  lint · typecheck · test · build     │
+      ↓                               ↓
+  you review + merge     ──────►  Preview Deployment (per PR, for manual testing)
+                                   Production Deployment (on merge to main)
+                                       ↓
+                          https://home.nitinkotcherlakota.com
+```
+
+GitHub Actions **never deploys** — Vercel's own Git integration owns Preview and Production deployments, triggered directly by pushes/PRs, independent of the CI workflow's outcome. CI is a review aid, not a deployment gate in the infrastructure sense (though branch protection can make it one for merging — see "GitHub Actions" below).
+
+## Production environment
+
+**Production URL:** `https://home.nitinkotcherlakota.com`
+
+- `main` branch = production. Every merge to `main` triggers a new Vercel Production Deployment.
+- Feature branches and their Pull Requests each get their own Vercel **Preview Deployment** — a real, running copy of the app on a unique URL, used for manual testing before merge.
+- **Vercel** is the deployment platform for both environments (see "Vercel preview deployments" below).
+- **Supabase** is the persistent application database and auth provider for both local dev and production — there is a single Supabase project; there is no separate "staging" database (see "Database change workflow" for why this makes migration discipline important).
+
+---
+
+## Local development
 
 ```bash
-npm install
-cp .env.example .env.local   # fill in your Supabase project URL + anon key — see "Cloud setup"
+git clone <this repository>
+cd HomeBase
+npm ci
+cp .env.example .env.local   # fill in your Supabase project URL + publishable key
 npm run dev                  # http://localhost:3000
 ```
 
-You'll be redirected to `/login` until you sign in (email code or magic link). The first sign-in creates your household and seeds a blank planning profile, three clearly-marked **SAMPLE** properties, the timeline, and the reusable checklists.
+You'll be redirected to `/login` until you sign in (email code or magic link). Signing in only proves *who you are* — it doesn't by itself grant access to any household's data. The first time you sign in with no household yet, you'll see a **Welcome to HomeScope** screen: **Create a household** (seeds a blank planning profile, three clearly-marked **SAMPLE** properties, the timeline, and the reusable checklists) or **Join a household** (enter an invitation code from an existing member — see "Household membership & family invites" below).
 
-## Cloud setup (Supabase)
+Required environment variables (see "Environment variables" for the full table — no values shown here, only names):
 
-HomeScope needs a Supabase project as its database. This is a one-time setup:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
-1. **Create a project** at [supabase.com](https://supabase.com) (the free tier is enough for a household of this size).
-2. **Run the migrations.** In the Supabase dashboard → SQL Editor, paste and run, in order:
-   - `supabase/migrations/0001_schema.sql` (all tables, indexes)
-   - `supabase/migrations/0002_functions.sql` (household bootstrap + backup-import functions)
-   - `supabase/migrations/0003_policies.sql` (Row Level Security policies)
-   - `supabase/migrations/0004_data_api_grants.sql` (explicit Data API grants — required even with RLS enabled; see the file header for why)
+If you don't yet have a Supabase project to point at, see `docs/SUPABASE_SETUP.md` for one-time project setup (creating the project, running the four migrations, enabling email auth, setting Site URL / Redirect URLs).
 
-   (Equivalently, if you have the [Supabase CLI](https://supabase.com/docs/guides/cli) installed: `supabase link` then `supabase db push`.)
-3. **Enable email auth.** Dashboard → Authentication → Providers → Email should already be on by default; no social providers are needed.
-4. **Set the Site URL and Redirect URLs.** Dashboard → Authentication → URL Configuration:
-   - Site URL: your production URL (e.g. `https://your-app.vercel.app`)
-   - Redirect URLs: add both `http://localhost:3000/auth/callback` (for local dev) and `https://your-app.vercel.app/auth/callback` (for production)
-5. **Copy your API keys.** Dashboard → Settings → API: the **Project URL** and the **anon / publishable** key (never the `service_role` key — this app never uses it, in the browser or on the server).
-6. Put those two values in `.env.local` (see `.env.example`) for local development, and in Vercel's environment variables for production (see below).
-
-## Deploying to Vercel
-
-1. Push this repository to GitHub (or connect the local folder directly with `vercel`).
-2. Import the project in Vercel.
-3. Set the environment variables (Project Settings → Environment Variables), for both Production and Preview:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-4. Deploy. Then add the Vercel deployment URL to Supabase's Redirect URLs (step 4 above) if you haven't already.
-5. Open the deployed app on your Mac, iPhone, and iPad, sign in, and use **Add to Home Screen** / **Install** to get the standalone app experience.
-
-## Commands
+### Commands
 
 ```bash
 npm run dev         # start the dev server
 npm run build       # production build
 npm run start       # serve the production build
-npm run lint        # ESLint
+npm run lint        # ESLint (via `next lint`)
 npm run typecheck   # tsc --noEmit
-<<<<<<< Updated upstream
-npm test            # Vitest (unit + legacy-persistence integration)
-=======
 npm test            # Vitest — unit + legacy-persistence integration (run once)
 npm run test:watch  # Vitest in watch mode
 ```
@@ -381,7 +382,6 @@ update Supabase Dashboard (and/or the email provider) → test sign-in → deplo
 **Environment variable change**
 ```
 update the value in Vercel (Production and/or Preview) → redeploy → verify
->>>>>>> Stashed changes
 ```
 
 ---
@@ -430,26 +430,22 @@ Defaults used when a property leaves a field blank: property taxes fall to the e
 ## Project structure
 
 ```
+.github/
+  workflows/ci.yml          # "HomeScope CI" — lint · typecheck · test · build; never deploys
+docs/
+  SUPABASE_SETUP.md          # deep dive: migrations, RLS/grants model, auth flow, troubleshooting
 supabase/
-  migrations/               # 0001 schema · 0002 functions (RPCs) · 0003 RLS policies
+  migrations/               # 0001 schema · 0002 functions (RPCs) · 0003 RLS policies · 0004 Data API grants
 src/
-  middleware.ts              # refreshes the Supabase session; redirects unauthenticated requests to /login
+  middleware.ts              # refreshes the Supabase session; redirects unauthenticated requests
+                              #   to /login, except the public paths (/, /get-started, /login,
+                              #   /auth/callback) — see "Public entry & sign-in" above
   app/
-    login/                  # email OTP + magic-link sign-in
+    page.tsx                # public welcome page ("/"), or redirects an authenticated visitor to /journey
+    get-started/            # public buyer/homeowner pre-selection ("/get-started")
+    login/                  # email OTP + magic-link sign-in (also serves sign-up)
     auth/callback/          # PKCE code exchange for the magic-link path
     manifest.ts icon.tsx apple-icon.tsx icons/  # PWA manifest + generated icons
-<<<<<<< Updated upstream
-    (app)/                  # every authenticated page, wrapped by HouseholdProvider + AppShell
-      page.tsx                # Journey overview (landing)
-      journey/[stageId]/      # guided step pages (18 stages)
-      properties/             # list + [id] detail (+ per-property deal)
-      visit/[id]/              # Visit mode
-      professionals/ resources/
-      compare/ finances/ lenders/ timeline/ settings/
-    layout.tsx globals.css
-  components/
-    ui.tsx                  # primitives (Button, Panel, Field, BandPill, SaveIndicator …)
-=======
     (app)/                  # every authenticated page, wrapped by HouseholdProvider + WorkspaceGate + AppShell;
                               #   AppShell/AppNav/BottomNav render per-mode via lib/workspace/navigation.ts
       journey/               # buyer: Journey overview (landing, "/journey") + [stageId]/ guided step pages (18 stages)
@@ -465,18 +461,14 @@ src/
     ui.tsx                  # primitives (Button, Panel, Field, BandPill, SaveIndicator …)
     marketing/               # public welcome page + /get-started (header, hero, principles, footer)
     workspace/                # path cards, buyer/owner onboarding forms, WorkspaceGate
->>>>>>> Stashed changes
     journey/ professional/ documents/ property/deal-section.tsx lender/approvals.tsx
     migration-banner.tsx    # the one-time "Local Home data found" import flow
     modal.tsx toast.tsx app-nav.tsx app-shell.tsx bottom-nav.tsx providers.tsx …
   lib/
     supabase/               # browser client, server client, middleware helper
-<<<<<<< Updated upstream
-=======
     workspace/                # buyer/homeowner mode: resolver, service, hooks, onboarding-gate,
                               #   navigation.ts (per-mode nav config + route protection), mode-context.tsx,
                               #   provisional-path.ts (pre-auth path hint) — see docs/WORKSPACE_MODE.md
->>>>>>> Stashed changes
     household/               # HouseholdProvider (bootstrap + new-household seeding), current-household id
     data/                    # use-query.ts (fetch/refetch primitive), invalidation.ts, save-status.ts, draft.ts
     calculations/           # tested pure functions (mortgage, closing, dti,
@@ -487,7 +479,10 @@ src/
                             #   snapshot, criteria (autoChecks), personalization,
                             #   progress (weighted), next-actions, use-snapshot
     models/                 # Zod schemas + inferred types (incl. journey,
-                            #   professional, resource, document, deal)
+                            #   professional, resource, document, deal). Property
+                            #   has two: propertySchema (strict persisted domain
+                            #   object) and propertyFormSchema (relaxed draft — a
+                            #   form may render with an empty address).
     seed/                   # editable profile (blank defaults), samples, timeline,
                             #   checklists, curated resources; cloud.ts seeds a new household
     db.ts repo.ts hooks.ts   # repo.ts/hooks.ts are Supabase-backed; db.ts is the
@@ -495,6 +490,11 @@ src/
     migration.ts             # the one-time local-data → cloud import flow
     backup.ts                # export / validated import (both legacy-local and cloud), snapshot
     property-finance.ts finance-presets.ts lender-estimate.ts
+    property-form.ts         # draft ↔ persisted Property adapters: a form
+                            #   starts as a draft (empty fields allowed) and is
+                            #   validated into a Property only at save time
+    property-search.ts       # pure Homes search-box filter (blank/whitespace
+                            #   query matches everything; no external lookup)
     format.ts labels.ts util.ts theme.ts
 ```
 
@@ -502,9 +502,9 @@ The distinction between `lib/guide` (content) and `lib/journey` (engines over sa
 
 ### Tested behavior
 
-`npm test` covers the calculation core (mortgage payment, cumulative interest, closing cash, reserves, DTI, guardrail classification, the combined plan evaluation, comparison, lender estimates, the overall score), JSON export/import validation, the legacy local database (seeding idempotency and the export → wipe → import round-trip, plus the migration read path that a real browser upgrade would exercise), and a **journey engine suite** verifying guide-content integrity (18 unique stages, globally-unique action/decision ids, an attending contract weighted far above reading a resource), deterministic `autoCheck` criteria (guardrails, childcare, the attending-timing risk, distinct-lender counting, visit-before-Primary), weighted progress and descriptive readiness, the next-action rules (including the critical walk-away-exceeded warning), and personalization token substitution.
+`npm test` covers the calculation core (mortgage payment, cumulative interest, closing cash, reserves, DTI, guardrail classification, the combined plan evaluation, comparison, lender estimates, the overall score), JSON export/import validation, the legacy local database (seeding idempotency and the export → wipe → import round-trip, plus the migration read path that a real browser upgrade would exercise), and a **journey engine suite** verifying guide-content integrity (18 unique stages, globally-unique action/decision ids, an attending contract weighted far above reading a resource), deterministic `autoCheck` criteria (guardrails, childcare, the attending-timing risk, distinct-lender counting, visit-before-Primary), weighted progress and descriptive readiness, the next-action rules (including the critical walk-away-exceeded warning), and personalization token substitution. It also covers the **property form draft ↔ persisted boundary** (`lib/property-form`: a draft may start with an empty address; `prepareProperty` trims and rejects an empty/whitespace address inline, and only a saved property must satisfy the strict `propertySchema`) and the Homes search filter (`lib/property-search`).
 
-The Supabase-backed read/write layer (`lib/hooks.ts`, `lib/repo.ts`) is not covered by automated tests — there is no CI Supabase instance to run against. It has been verified manually against a real project; see the deployment notes for the manual smoke-test steps.
+The Supabase-backed read/write layer (`lib/hooks.ts`, `lib/repo.ts`) is not covered by automated tests — there is no CI Supabase instance to run against (see "Suggested future enhancements"). It has been verified manually against a real project.
 
 ---
 
@@ -527,3 +527,4 @@ These are intentionally out of scope and would be added later, if ever:
 - Calendar integration for showings and deadlines
 - Optional market-data import for comparable sales
 - Inspection-document organization
+- A Docker-based local Supabase instance (`supabase start`) wired into CI for real migration/RLS testing (e.g. pgTAP) — deliberately not built now; it would add meaningful CI infrastructure for a personal project whose migrations are already reviewed by hand before every production apply

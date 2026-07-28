@@ -1,9 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth/callback"];
+const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/get-started"];
 
-/** Refreshes the Supabase session cookie and redirects unauthenticated requests to /login. */
+/**
+ * Refreshes the Supabase session cookie and redirects unauthenticated requests to
+ * /login — except for the public paths above. "/" and "/get-started" are public
+ * so a logged-out visitor sees the welcome page / path selection instead of
+ * being bounced to /login; each of those pages does its own server-side check
+ * to send an *authenticated* visitor into the app (see src/app/page.tsx and
+ * src/app/get-started/page.tsx) rather than duplicating that logic here.
+ */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 

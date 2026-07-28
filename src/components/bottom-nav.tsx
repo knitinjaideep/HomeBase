@@ -6,15 +6,7 @@ import { cn } from "@/lib/util";
 import { getNavigationForMode, isNavItemActive } from "@/lib/workspace/navigation";
 import type { ResolvedMode } from "@/lib/workspace/resolver";
 
-<<<<<<< Updated upstream
-const ITEMS = [
-  { href: "/", label: "Journey", icon: JourneyIcon },
-  { href: "/properties", label: "Homes", icon: HomesIcon },
-  { href: "/toolkit", label: "Toolkit", icon: ToolkitIcon },
-];
-=======
 type IconComponent = (props: { active: boolean }) => React.ReactElement;
->>>>>>> Stashed changes
 
 /** Icons keyed by href — a presentation-only concern, kept separate from the pure nav config. */
 const ICONS: Record<string, IconComponent> = {
@@ -26,20 +18,8 @@ const ICONS: Record<string, IconComponent> = {
   "/notes": NotesIcon,
 };
 
-<<<<<<< Updated upstream
-function isActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/" || pathname.startsWith("/journey");
-  if (href === "/properties") return pathname.startsWith("/properties") || pathname.startsWith("/visit");
-  if (href === "/toolkit") return TOOLKIT_ROUTES.some((r) => pathname === r || pathname.startsWith(`${r}/`));
-  return pathname === href;
-}
-
-/** The mobile primary nav. Three items only — Settings lives behind the top-bar icon. */
-export function BottomNav() {
-=======
 /** The mobile primary nav. Items and destinations follow the active mode (see lib/workspace/navigation.ts). */
 export function BottomNav({ mode }: { mode: ResolvedMode }) {
->>>>>>> Stashed changes
   const pathname = usePathname();
   const nav = getNavigationForMode(mode);
 

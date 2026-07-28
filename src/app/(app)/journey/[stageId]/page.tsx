@@ -54,7 +54,7 @@ function StageView({ stage, s }: { stage: GuideStage; s: JourneySnapshot }) {
     <div className="mx-auto max-w-2xl">
       {/* Breadcrumb */}
       <div className="mb-4 flex items-center justify-between text-sm">
-        <Link href="/" className="text-ink-muted hover:text-accent">
+        <Link href="/journey" className="text-ink-muted hover:text-accent">
           ← Journey
         </Link>
         <span className="text-ink-subtle">
@@ -160,7 +160,7 @@ function StageView({ stage, s }: { stage: GuideStage; s: JourneySnapshot }) {
             {next.number}. {next.shortTitle} →
           </Link>
         ) : (
-          <Link href="/" className="text-sm font-medium text-accent hover:underline">
+          <Link href="/journey" className="text-sm font-medium text-accent hover:underline">
             Back to Journey →
           </Link>
         )}

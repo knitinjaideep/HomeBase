@@ -32,12 +32,9 @@ export * from "./professional";
 export * from "./resource";
 export * from "./document";
 export * from "./deal";
-<<<<<<< Updated upstream
-=======
 export * from "./household";
 export * from "./workspace";
 export * from "./note";
->>>>>>> Stashed changes
 
 /**
  * The complete backup envelope for export/import. Every array is validated with
