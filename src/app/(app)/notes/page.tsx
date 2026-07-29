@@ -1,183 +1,185 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useNotes } from "@/lib/hooks";
-import { createNote, deleteNote, updateNote } from "@/lib/repo";
-import type { Note } from "@/lib/models";
-import { PageHeader, Panel, Button, Field, Input, Textarea, EmptyState } from "@/components/ui";
-import { dateLabel } from "@/lib/format";
+import { useSearchParams } from "next/navigation";
+import {
+  useAllVisits,
+  useDeals,
+  useDocuments,
+  useNotes,
+  useProfessionals,
+  useProperties,
+} from "@/lib/hooks";
+import { resolveNoteContext } from "@/lib/notes/context";
+import { filterNotes, allTags } from "@/lib/notes/filter";
+import { NOTE_CONTEXT_TYPE_LABELS } from "@/lib/labels";
+import { PageHeader, Panel, Button, Field, Input, Select, EmptyState } from "@/components/ui";
+import { NoteComposer } from "@/components/notes/note-composer";
+import { NoteCard } from "@/components/notes/note-card";
 import { useToast } from "@/components/toast";
 import { cn } from "@/lib/util";
+import type { NoteContextType } from "@/lib/models";
+
+const CONTEXT_TYPES = Object.keys(NOTE_CONTEXT_TYPE_LABELS) as NoteContextType[];
 
 /**
- * Freeform notes, shared across buyer and homeowner mode (see
- * lib/models/note.ts) — a household jots down anything that doesn't belong
- * to a more specific tool. Kept intentionally simple: title + body, pin to
- * keep something at the top, edit and delete.
+ * A calm, notebook-like home for every note — general and contextual alike.
+ * See lib/models/note.ts for the shared model and components/notes/ for the
+ * shared composer/card this page has in common with every contextual panel.
  */
 export default function NotesPage() {
   const notes = useNotes();
+  const properties = useProperties();
+  const visits = useAllVisits();
+  const deals = useDeals();
+  const documents = useDocuments();
+  const professionals = useProfessionals();
   const { notify } = useToast();
+  const searchParams = useSearchParams();
+
   const [showAdd, setShowAdd] = useState(false);
+  const [query, setQuery] = useState("");
+  // "all" | "general" | NoteContextType — seeded from a NoteContextPanel's
+  // "View all" link (?context=type:id), which also seeds `scopeId` below.
+  const [contextFilter, setContextFilter] = useState<string>(() => searchParams.get("context")?.split(":")[0] || "all");
+  const [scopeId, setScopeId] = useState<string | null>(() => searchParams.get("context")?.split(":")[1] || null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [pinnedOnly, setPinnedOnly] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
-  const sorted = useMemo(() => {
-    return (notes ?? [])
-      .slice()
-      .sort(
-        (a, b) =>
-          Number(b.pinned) - Number(a.pinned) ||
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      );
-  }, [notes]);
+  const tags = useMemo(() => allTags(notes ?? []), [notes]);
 
-  if (!notes) return <div className="text-ink-subtle">Loading…</div>;
+  const filtered = useMemo(() => {
+    if (!notes) return [];
+    const contextType: NoteContextType | null | undefined =
+      contextFilter === "all" ? undefined : contextFilter === "general" ? null : (contextFilter as NoteContextType);
+    let result = filterNotes(notes, {
+      query,
+      contextType,
+      tags: selectedTags,
+      pinnedOnly,
+      archived: showArchived,
+    });
+    if (scopeId) result = result.filter((n) => n.contextId === scopeId);
+    return result.sort(
+      (a, b) => Number(b.pinned) - Number(a.pinned) || new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
+  }, [notes, query, contextFilter, selectedTags, pinnedOnly, showArchived, scopeId]);
+
+  if (!notes || !properties || !visits || !deals || !documents || !professionals) {
+    return <div className="text-ink-subtle">Loading…</div>;
+  }
+
+  const contextData = { properties, visits, deals, documents, professionals };
 
   return (
     <div>
       <PageHeader
         title="Notes"
-        description="Anything worth writing down — available no matter which HomeScope path you're on."
+        description="Anything worth writing down — general, or attached to a home, a visit, an offer, a journey stage, or a professional."
         actions={<Button onClick={() => setShowAdd((s) => !s)}>{showAdd ? "Close" : "Add note"}</Button>}
       />
 
       {showAdd && (
-        <AddNoteForm
-          onDone={() => setShowAdd(false)}
-          onSaved={() => notify("Note added.")}
-        />
+        <Panel className="mb-6 p-5 sm:p-6">
+          <NoteComposer
+            onSaved={() => {
+              setShowAdd(false);
+              notify("Note added.");
+            }}
+            onCancel={() => setShowAdd(false)}
+          />
+        </Panel>
       )}
 
-      {sorted.length === 0 ? (
+      <div className="mb-5 grid gap-3 sm:grid-cols-3">
+        <Field label="Search">
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search title or note text…" />
+        </Field>
+        <Field label="Context">
+          <Select
+            value={contextFilter}
+            onChange={(e) => {
+              setContextFilter(e.target.value);
+              setScopeId(null);
+            }}
+          >
+            <option value="all">All contexts</option>
+            <option value="general">General (no context)</option>
+            {CONTEXT_TYPES.map((c) => (
+              <option key={c} value={c}>
+                {NOTE_CONTEXT_TYPE_LABELS[c]}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <div className="flex items-end gap-2">
+          <Button
+            variant={pinnedOnly ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => setPinnedOnly((v) => !v)}
+          >
+            Pinned
+          </Button>
+          <Button
+            variant={showArchived ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => setShowArchived((v) => !v)}
+          >
+            {showArchived ? "Showing archived" : "Show archived"}
+          </Button>
+        </div>
+      </div>
+
+      {scopeId && (
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => setScopeId(null)}
+            className="text-xs font-medium text-accent hover:underline"
+          >
+            Scoped to one record — clear to see all {NOTE_CONTEXT_TYPE_LABELS[contextFilter as NoteContextType] ?? "notes"} ×
+          </button>
+        </div>
+      )}
+
+      {tags.length > 0 && (
+        <div className="mb-5 flex flex-wrap gap-1.5">
+          {tags.map((t) => {
+            const active = selectedTags.includes(t);
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setSelectedTags((prev) => (active ? prev.filter((x) => x !== t) : [...prev, t]))}
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
+                  active ? "bg-accent text-white" : "bg-surface-muted text-ink-muted hover:text-ink",
+                )}
+              >
+                {t}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
         <EmptyState
-          title="No notes yet"
-          description="Add your first note — a reminder, a question for tomorrow, anything."
+          title={showArchived ? "No archived notes" : "No notes match"}
+          description={
+            showArchived
+              ? "Notes you archive will show up here, kept but out of the way."
+              : "Add your first note — a reminder, a question for tomorrow, anything."
+          }
         />
       ) : (
         <div className="space-y-3">
-          {sorted.map((note) => (
-            <NoteCard key={note.id} note={note} onChanged={() => notify("Note updated.")} />
+          {filtered.map((note) => (
+            <NoteCard key={note.id} note={note} context={resolveNoteContext(note, contextData)} />
           ))}
         </div>
       )}
     </div>
-  );
-}
-
-function AddNoteForm({ onDone, onSaved }: { onDone: () => void; onSaved: () => void }) {
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const submit = async () => {
-    const trimmedBody = body.trim();
-    if (!trimmedBody) {
-      setError("Write something in the note before saving.");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      await createNote({ title: title.trim(), body: trimmedBody });
-      onSaved();
-      onDone();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the note.");
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Panel className="mb-6 p-5 sm:p-6">
-      <div className="space-y-3">
-        <Field label="Title (optional)">
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Questions for the plumber" />
-        </Field>
-        <Field label="Note">
-          <Textarea rows={4} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write your note…" />
-        </Field>
-        {error && <p className="text-sm text-critical">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onDone} disabled={busy}>
-            Cancel
-          </Button>
-          <Button onClick={submit} disabled={busy}>
-            {busy ? "Saving…" : "Save note"}
-          </Button>
-        </div>
-      </div>
-    </Panel>
-  );
-}
-
-function NoteCard({ note, onChanged }: { note: Note; onChanged: () => void }) {
-  const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(note.title);
-  const [body, setBody] = useState(note.body);
-  const [busy, setBusy] = useState(false);
-
-  const save = async () => {
-    const trimmedBody = body.trim();
-    if (!trimmedBody) return;
-    setBusy(true);
-    await updateNote(note.id, { title: title.trim(), body: trimmedBody });
-    setBusy(false);
-    setEditing(false);
-    onChanged();
-  };
-
-  const togglePin = async () => {
-    await updateNote(note.id, { pinned: !note.pinned });
-  };
-
-  const remove = async () => {
-    if (!confirm("Delete this note? This can't be undone.")) return;
-    await deleteNote(note.id);
-  };
-
-  if (editing) {
-    return (
-      <Panel className="p-5 sm:p-6">
-        <div className="space-y-3">
-          <Field label="Title (optional)">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
-          </Field>
-          <Field label="Note">
-            <Textarea rows={4} value={body} onChange={(e) => setBody(e.target.value)} />
-          </Field>
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setEditing(false)} disabled={busy}>
-              Cancel
-            </Button>
-            <Button onClick={save} disabled={busy}>
-              {busy ? "Saving…" : "Save"}
-            </Button>
-          </div>
-        </div>
-      </Panel>
-    );
-  }
-
-  return (
-    <Panel className={cn("p-5 sm:p-6", note.pinned && "border-[color:var(--mode-accent-border)]")}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          {note.title && <h3 className="font-display text-base text-ink">{note.title}</h3>}
-          <p className="mt-1 whitespace-pre-wrap text-sm text-ink-muted">{note.body}</p>
-          <p className="mt-2 text-xs text-ink-subtle">Updated {dateLabel(note.updatedAt)}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={togglePin} aria-label={note.pinned ? "Unpin note" : "Pin note"}>
-            {note.pinned ? "Unpin" : "Pin"}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
-            Edit
-          </Button>
-          <Button variant="danger" size="sm" onClick={remove}>
-            Delete
-          </Button>
-        </div>
-      </div>
-    </Panel>
   );
 }

@@ -5,6 +5,7 @@ import { AppNav } from "./app-nav";
 import { BottomNav } from "./bottom-nav";
 import { BackupReminder } from "./backup-reminder";
 import { MigrationBanner } from "./migration-banner";
+import { QuickNote } from "./notes/quick-note";
 
 /**
  * Frame around every page: navigation, the backup reminder, and a footer
@@ -13,7 +14,9 @@ import { MigrationBanner } from "./migration-banner";
  * a hydration flicker) and passes it down to AppNav/BottomNav, and sets
  * `data-mode` on the root element so the mode-accent CSS custom properties
  * (globals.css) cascade to the nav's active-item styling without recoloring
- * the rest of the shell.
+ * the rest of the shell. `QuickNote` is mounted here (not per-page) so it's
+ * identical in both modes and stays mounted across in-app navigation — see
+ * components/notes/quick-note.tsx for why that matters for its draft.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const mode = useActiveMode();
@@ -40,6 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </footer>
       <BottomNav mode={mode} />
+      <QuickNote />
     </div>
   );
 }

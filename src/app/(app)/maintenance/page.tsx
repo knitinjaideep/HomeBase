@@ -1,10 +1,13 @@
-import Link from "next/link";
 import { Panel, EmptyState } from "@/components/ui";
+import { NoteContextPanel } from "@/components/notes/note-context-panel";
 
 /**
- * Placeholder only — per this PR's scope, maintenance features themselves
- * are not implemented here, just the destination and its place in the
- * homeowner nav (see lib/workspace/navigation.ts).
+ * The tracking itself (recurring tasks, warranties, a maintenance-item data
+ * model) is still future work — see docs/WORKSPACE_MODE.md. What this page
+ * adds now is a place to jot notes about maintenance so nothing gets lost in
+ * the meantime; those notes carry a "maintenanceItem" context (see
+ * lib/models/note.ts) so once real maintenance records exist, nothing about
+ * how they're captured needs to change.
  */
 export default function MaintenancePage() {
   return (
@@ -16,18 +19,14 @@ export default function MaintenancePage() {
         </p>
       </div>
 
+      <div className="mb-8">
+        <NoteContextPanel contextType="maintenanceItem" contextId={null} title="Maintenance notes" />
+      </div>
+
       <Panel className="p-5 sm:p-6">
         <EmptyState
           title="Maintenance tracking is coming soon"
-          description="This will hold your home's recurring tasks (filters, gutters, HVAC service), appliance and system warranties, and a simple history of what's been done and when. Until then, jot anything down in Notes so it isn't lost."
-          action={
-            <Link
-              href="/notes"
-              className="inline-flex min-h-[2.5rem] items-center rounded-lg border border-line px-4 text-sm font-medium text-ink hover:bg-surface-muted"
-            >
-              Go to Notes
-            </Link>
-          }
+          description="This will hold your home's recurring tasks (filters, gutters, HVAC service), appliance and system warranties, and a simple history of what's been done and when."
         />
       </Panel>
     </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { BuyerModeProfile, OwnerModeProfile, WorkspaceMode } from "@/lib/models";
 import { finishBuyerOnboarding, finishOwnerOnboarding } from "@/lib/workspace/service";
 import { Button } from "@/components/ui";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { PathSelectionCards } from "./path-cards";
 import { BuyerOnboardingForm, type BuyerOnboardingValues } from "./buyer-onboarding-form";
 import { OwnerOnboardingForm, type OwnerOnboardingValues } from "./owner-onboarding-form";
@@ -77,11 +78,14 @@ export function WorkspaceOnboarding({
         <div className="animate-fade-in">
           <div className="mb-8 flex items-center justify-between">
             <span className="font-display text-sm tracking-wide text-ink-muted">HomeScope</span>
-            {onCancel && (
-              <Button variant="ghost" size="sm" onClick={onCancel} disabled={busy}>
-                Cancel
-              </Button>
-            )}
+            <div className="flex items-center gap-1">
+              <ThemeToggle />
+              {onCancel && (
+                <Button variant="ghost" size="sm" onClick={onCancel} disabled={busy}>
+                  Cancel
+                </Button>
+              )}
+            </div>
           </div>
 
           {step === "path" ? (

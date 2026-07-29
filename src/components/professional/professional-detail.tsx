@@ -24,6 +24,7 @@ import { PROFESSIONAL_ROLE_LABELS, SELECTION_STATUS_LABELS } from "@/lib/labels"
 import { cn } from "@/lib/util";
 import { useSaveStatus, type SaveStatus } from "@/lib/data/save-status";
 import { SaveIndicator } from "@/components/save-indicator";
+import { NoteContextPanel } from "@/components/notes/note-context-panel";
 
 const TAB_BASE = "px-3 py-1.5 text-sm font-medium rounded-md transition-colors";
 
@@ -62,6 +63,10 @@ export function ProfessionalDetail({ professional }: { professional: Professiona
       {tab === "verify" && isAgent && <VerificationTab professional={professional} run={saveStatus.run} />}
       {tab === "interview" && <InterviewTab professional={professional} run={saveStatus.run} />}
       {tab === "scorecard" && isAgent && <ScorecardTab professional={professional} run={saveStatus.run} />}
+
+      <div className="mt-5">
+        <NoteContextPanel contextType="professional" contextId={professional.id} title="Notes about this person" />
+      </div>
 
       <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
         <Button

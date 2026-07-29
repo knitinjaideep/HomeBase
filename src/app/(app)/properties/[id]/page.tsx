@@ -13,6 +13,7 @@ import {
 import { archiveProperty, deleteProperty, restoreProperty, updateProperty } from "@/lib/repo";
 import { evaluateProperty } from "@/lib/property-finance";
 import { DealSection } from "@/components/property/deal-section";
+import { NoteContextPanel } from "@/components/notes/note-context-panel";
 import { dateLabel, money, moneyPerMonth, num, percent } from "@/lib/format";
 import {
   BandPill,
@@ -371,14 +372,21 @@ export default function PropertyDetailPage() {
       )}
 
       {tab === "Notes" && (
-        <Panel className="p-5 print-block">
-          <h2 className="mb-3 font-display text-lg text-ink">Notes</h2>
-          {property.notes ? (
-            <p className="whitespace-pre-wrap text-sm text-ink">{property.notes}</p>
-          ) : (
-            <p className="text-sm text-ink-subtle">No notes yet. Add some from Edit.</p>
-          )}
-        </Panel>
+        <div className="space-y-4">
+          <Panel className="p-5 print-block">
+            <h2 className="mb-3 font-display text-lg text-ink">Notes (from Edit)</h2>
+            {property.notes ? (
+              <p className="whitespace-pre-wrap text-sm text-ink">{property.notes}</p>
+            ) : (
+              <p className="text-sm text-ink-subtle">No notes yet. Add some from Edit.</p>
+            )}
+          </Panel>
+
+          <div className="no-print space-y-4">
+            <NoteContextPanel contextType="property" contextId={property.id} title="Notes about this home" />
+            {deal && <NoteContextPanel contextType="deal" contextId={deal.id} title="Notes about the offer" />}
+          </div>
+        </div>
       )}
 
       <Overlay open={editing} onClose={() => setEditing(false)} title="Edit property" variant="drawer">
