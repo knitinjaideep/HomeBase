@@ -662,6 +662,14 @@ export async function updateNote(id: string, patch: Partial<Note>): Promise<void
   await patchRow("notes", id, patch);
 }
 
+export async function archiveNote(id: string): Promise<void> {
+  await patchRow("notes", id, { archived: true });
+}
+
+export async function restoreNote(id: string): Promise<void> {
+  await patchRow("notes", id, { archived: false });
+}
+
 export async function deleteNote(id: string): Promise<void> {
   await removeRow("notes", id);
 }

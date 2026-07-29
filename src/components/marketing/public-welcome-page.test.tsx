@@ -11,7 +11,7 @@ describe("PublicWelcomePage", () => {
     const html = render();
     const h1s = html.match(/<h1[^>]*>/g) ?? [];
     expect(h1s).toHaveLength(1);
-    expect(html).toContain("From finding a home to caring for it.");
+    expect(html).toContain("One place for the home you’re finding or caring for.");
   });
 
   it("offers Log in and Get started, and nothing else as primary actions", () => {
@@ -30,9 +30,12 @@ describe("PublicWelcomePage", () => {
 
   it("shows no authenticated app chrome", () => {
     const html = render();
-    for (const term of ["Journey", "Homes", "Toolkit", "Settings", "Sign out"]) {
+    for (const term of ["Journey", "Toolkit", "Settings", "Sign out"]) {
       expect(html).not.toContain(term);
     }
+    // "Homes" alone also appears in this page's own marketing copy ("Homes
+    // and visits"), so check for the authenticated nav's actual link instead.
+    expect(html).not.toContain('href="/properties"');
   });
 
   it("uses semantic header, main, and footer landmarks", () => {

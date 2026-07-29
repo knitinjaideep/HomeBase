@@ -6,6 +6,8 @@ import type {
   DocumentStatus,
   HouseholdRole,
   JourneyStatus,
+  NoteContextType,
+  NoteType,
   ProfessionalRole,
   SelectionStatus,
   TownDesignation,
@@ -227,4 +229,26 @@ export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
 export const HOUSEHOLD_ROLE_LABELS: Record<HouseholdRole, string> = {
   owner: "Owner",
   member: "Member",
+};
+
+// ---- Notes --------------------------------------------------------------
+
+export const NOTE_CONTEXT_TYPE_LABELS: Record<NoteContextType, string> = {
+  journeyStage: "Journey stage",
+  property: "Candidate home",
+  propertyVisit: "Home visit",
+  deal: "Offer / deal",
+  ownedHome: "Owned home",
+  maintenanceItem: "Maintenance item",
+  repairProject: "Repair or project",
+  document: "Document",
+  professional: "Person / professional",
+};
+
+export const NOTE_TYPE_LABELS: Record<NoteType, string> = {
+  general: "General",
+  question: "Question",
+  observation: "Observation",
+  decision: "Decision",
+  "follow-up": "Follow-up",
 };

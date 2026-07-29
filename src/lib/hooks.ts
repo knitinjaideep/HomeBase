@@ -27,6 +27,8 @@ import {
   propertyVisitSchema,
   resourceSchema,
   townResearchSchema,
+  type Note,
+  type NoteContextType,
 } from "@/lib/models";
 
 /**
@@ -220,6 +222,37 @@ export function useDocuments() {
 /** Shared across buyer and homeowner mode — see lib/models/note.ts. */
 export function useNotes() {
   return useCollection("notes", noteSchema);
+}
+
+/**
+ * Notes attached to one specific piece of household data — e.g. a candidate
+ * home or a professional. Two-column filter, so it's bespoke rather than
+ * built on `useFilteredCollection` (which only filters on one column).
+ *
+ * `contextId: null` (as opposed to `undefined`) is a real, meaningful value
+ * here — it means "category only, no specific record yet" (used for
+ * `ownedHome`/`maintenanceItem`/`repairProject`, which have no backing table
+ * — see lib/models/note.ts), so it queries `"contextId" is null` rather than
+ * skipping the fetch. `undefined` means "nothing to look up yet" and returns
+ * `[]` without querying.
+ */
+export function useNotesForContext(contextType: NoteContextType | undefined, contextId: string | null | undefined) {
+  const { householdId } = useHouseholdContext();
+  const enabled = !!contextType && contextId !== undefined;
+  return useQuery(
+    async () => {
+      if (!contextType || contextId === undefined) return [] as Note[];
+      let query = createClient()
+        .from("notes")
+        .select("*")
+        .eq("householdId", householdId)
+        .eq("contextType", contextType);
+      query = contextId === null ? query.is("contextId", null) : query.eq("contextId", contextId);
+      const { data, error } = await query;
+      return noteSchema.array().parse(unwrap({ data, error }));
+    },
+    { deps: [householdId, contextType, contextId], watch: ["notes"], enabled },
+  );
 }
 
 export function useDeals() {

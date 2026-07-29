@@ -67,6 +67,108 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/* Landing page background artwork — theme-specific image + overlay, selected
+   purely by the existing `.dark` class ancestor. A CSS background (rather
+   than next/image) means the browser only ever fetches the image that
+   actually matches, so the inactive theme's artwork is never downloaded.
+
+   `min-height` is set to a full viewport (not left to content) so the
+   artwork always fills the first screen the same way regardless of how much
+   vertical space the header + hero copy happen to need at a given width —
+   without it, wide/short viewports leave a lot of plain canvas below a
+   short hero while narrow/tall ones are almost entirely covered. `100vh` is
+   a fallback for browsers without `svh` support; `100svh` (small viewport
+   height, i.e. with mobile browser chrome accounted for) wins where it's
+   supported. Still `min-height`, not a fixed height, so extra-tall content
+   (e.g. a heavily wrapped headline on a narrow phone) simply grows past it
+   instead of clipping. */
+.landing-page {
+  --landing-background: url("/images/landing/landing-light.png");
+  --landing-overlay: linear-gradient(
+    180deg,
+    rgba(255, 253, 248, 0.08) 0%,
+    rgba(255, 253, 248, 0.24) 55%,
+    rgba(255, 253, 248, 0.86) 100%
+  );
+  --landing-sparkle: rgb(var(--caution) / 0.85);
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
+.dark .landing-page {
+  --landing-background: url("/images/landing/landing-dark.png");
+  --landing-overlay: linear-gradient(
+    180deg,
+    rgba(3, 12, 17, 0.15) 0%,
+    rgba(3, 12, 17, 0.32) 55%,
+    rgba(3, 12, 17, 0.92) 100%
+  );
+  --landing-sparkle: rgb(var(--accent) / 0.85);
+}
+
+.landing-page__visual {
+  position: absolute;
+  inset: 0;
+  background-image: var(--landing-overlay), var(--landing-background);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-page__visual {
+    animation: hs-landing-bg-in 0.6s ease-out;
+  }
+  @keyframes hs-landing-bg-in {
+    from {
+      opacity: 0;
+      transform: scale(1.01);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}
+
+/* A restrained scatter of twinkling specks over the hero artwork — warm gold
+   in light mode, cool mint in dark mode (the app's own two mode accents), so
+   it reads as "glitter" rather than a generic particle effect. Positions are
+   static (only opacity/scale animate), which keeps it calm rather than a
+   literal moving starfield. */
+.landing-page__sparkles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.hs-sparkle {
+  position: absolute;
+  border-radius: 9999px;
+  background: var(--landing-sparkle);
+  box-shadow: 0 0 6px 1px var(--landing-sparkle);
+  opacity: 0.25;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hs-sparkle {
+    animation: hs-twinkle 4s ease-in-out infinite;
+  }
+  @keyframes hs-twinkle {
+    0%,
+    100% {
+      opacity: 0.1;
+      transform: scale(0.6);
+    }
+    50% {
+      opacity: 0.9;
+      transform: scale(1);
+    }
+  }
+}
+
 body {
   background-color: rgb(var(--canvas));
   color: rgb(var(--ink));

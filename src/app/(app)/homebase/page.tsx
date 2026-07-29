@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Panel } from "@/components/ui";
+import { NoteContextPanel } from "@/components/notes/note-context-panel";
 
 /**
  * The homeowner default landing page — the homeowner counterpart to /journey
@@ -44,6 +45,10 @@ export default function HomeBasePage() {
             Settings →
           </Link>
         </div>
+      </div>
+
+      <div className="mb-8">
+        <NoteContextPanel contextType="ownedHome" contextId={null} title="Notes about your home" />
       </div>
 
       <Panel className="p-5 sm:p-6">

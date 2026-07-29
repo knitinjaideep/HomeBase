@@ -17,6 +17,7 @@ import { QuestionSetView } from "@/components/journey/question-set";
 import { AttendingTracker } from "@/components/journey/attending-tracker";
 import { TownResearchTool } from "@/components/journey/town-research-tool";
 import { Overlay } from "@/components/modal";
+import { NoteContextPanel } from "@/components/notes/note-context-panel";
 import { JOURNEY_STATUS_LABELS } from "@/lib/labels";
 import type { JourneyStatus } from "@/lib/models";
 import type { JourneySnapshot } from "@/lib/journey/snapshot";
@@ -147,6 +148,10 @@ function StageView({ stage, s }: { stage: GuideStage; s: JourneySnapshot }) {
       </div>
 
       {/* Prev / next */}
+      <div className="mt-8">
+        <NoteContextPanel contextType="journeyStage" contextId={stage.id} title="Notes about this stage" />
+      </div>
+
       <div className="mt-10 flex items-center justify-between border-t border-line pt-6">
         {prev ? (
           <Link href={`/journey/${prev.id}`} className="text-sm text-ink-muted hover:text-accent">

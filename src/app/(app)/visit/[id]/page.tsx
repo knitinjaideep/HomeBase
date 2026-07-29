@@ -8,6 +8,7 @@ import { newVisit } from "@/lib/repo";
 import { dateLabel } from "@/lib/format";
 import { Button } from "@/components/ui";
 import { VisitForm } from "@/components/visit/visit-form";
+import { NoteContextPanel } from "@/components/notes/note-context-panel";
 import type { PropertyVisit } from "@/lib/models";
 
 export default function VisitPage() {
@@ -89,6 +90,12 @@ export default function VisitPage() {
           /* live query refreshes the list; keep editing the current visit */
         }}
       />
+
+      {visits.some((v) => v.id === current.id) && (
+        <div className="mt-6">
+          <NoteContextPanel contextType="propertyVisit" contextId={current.id} title="Notes about this visit" />
+        </div>
+      )}
     </div>
   );
 }

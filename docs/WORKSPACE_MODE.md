@@ -198,9 +198,14 @@ resolving to `"owning"`, which is exactly the hydration flicker mode-aware
 navigation is supposed to avoid.
 
 **Notes** (`src/lib/models/note.ts`, `/notes`) is the one genuinely new
-*shared* feature this introduced — a small freeform-notes table, deliberately
-mode-neutral (no stage/category reference), which is what makes it safe to
-expose in both nav configurations.
+*shared* feature this introduced — a freeform-notes table, still one shared
+table safe to expose in both nav configurations. It has since grown an
+optional `contextType`/`contextId` link to one piece of household data (a
+candidate home, a home visit, an offer, a journey stage, a document, a
+professional, or an owner-mode category); `contextType: null` is still a
+plain general note, exactly what every note was before that field existed.
+See `src/lib/notes/context.ts` and `src/components/notes/` for the shared
+resolution logic and components buyer and owner screens both use.
 
 **HomeBase** (`/homebase`) and **Maintenance** (`/maintenance`) are
 placeholder pages for now — they establish the homeowner destination and its
