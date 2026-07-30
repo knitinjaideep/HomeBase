@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/get-started"];
+const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/get-started", "/preview-access"];
 
 /**
  * Refreshes the Supabase session cookie and redirects unauthenticated requests to
@@ -10,6 +10,10 @@ const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/get-started"];
  * being bounced to /login; each of those pages does its own server-side check
  * to send an *authenticated* visitor into the app (see src/app/page.tsx and
  * src/app/get-started/page.tsx) rather than duplicating that logic here.
+ * "/preview-access" is public for the same reason — it must be reachable by a
+ * signed-out visitor without being bounced to /login (see
+ * src/lib/preview-gate/gate.ts, which runs before this and decides whether a
+ * visitor reaches this far at all).
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });

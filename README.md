@@ -259,14 +259,48 @@ If someone signed in before an invite existed for them, `bootstrap_household()`'
 |---|---|---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes, in `.env.local` | Yes, for Production **and** Preview | Public | Supabase project API URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes, in `.env.local` | Yes, for Production **and** Preview | Public | Supabase anon/publishable key — access is gated by RLS, not by keeping this value secret |
+| `PREVIEW_GATE_ENABLED` | No (defaults to disabled) | Only while the temporary preview gate is in use | Secret-adjacent* | Turns the site-wide preview access gate on/off — see "Preview access gate" below |
+| `PREVIEW_ACCESS_KEY` | Only if `PREVIEW_GATE_ENABLED=true` | Only while the gate is in use | **Secret** | The shared key visitors must enter at `/preview-access` |
+| `PREVIEW_COOKIE_SECRET` | Only if `PREVIEW_GATE_ENABLED=true` | Only while the gate is in use | **Secret** | Signs the preview-authorization cookie; separate from the access key so rotating one doesn't require rotating the other |
 
-That's the complete list — the app has no other environment variables, no server-only secrets, and no code path that reads a Supabase `service_role` key.
+\* `PREVIEW_GATE_ENABLED` isn't sensitive on its own, but keep it alongside the two secrets since it controls whether they're enforced.
+
+Aside from the temporary preview gate, the app has no other environment variables, no server-only secrets besides the two above, and no code path that reads a Supabase `service_role` key.
 
 - **`.env.local`** → local development only, git-ignored, never committed.
 - **Vercel Environment Variables** (Project Settings → Environment Variables) → what Production and Preview deployments actually run with. Set both variables for both environments.
 - **GitHub Secrets/Variables** → only relevant to CI. **None are currently required** — `npm run build` succeeds with these variables entirely unset (verified: no page calls Supabase during static generation), so `.github/workflows/ci.yml` hardcodes harmless non-functional placeholder values directly in the workflow rather than reading any secret. If a future change makes the build depend on a real value, add it as a GitHub Actions **repository Variable** (`vars.*`), not a Secret — these values are public by design.
 
 Any variable prefixed `NEXT_PUBLIC_` is bundled into client-side JavaScript and downloaded by every visitor's browser. Never add a secret under that prefix.
+
+## Preview access gate
+
+A **temporary, site-wide gate** for use before public launch: while enabled, every visitor must enter a shared preview access key at `/preview-access` before reaching *any* part of the app — the public welcome page, `/login`, `/get-started`, and every authenticated route. It's an outer layer only; it does not replace Supabase Auth, RLS, or household authorization, all of which continue to run normally once a visitor is past the gate. Implementation: `src/lib/preview-gate/` (config, signed-token, rate-limit, return-to sanitization, and the gate check itself) plus `src/app/preview-access/` (the page, its form, and the server action that validates the key); wired into `src/middleware.ts` ahead of the existing Supabase session logic.
+
+**1. Enable it locally**
+
+```bash
+# .env.local
+PREVIEW_GATE_ENABLED=true
+PREVIEW_ACCESS_KEY=some-long-random-value       # e.g. `openssl rand -hex 32`
+PREVIEW_COOKIE_SECRET=a-different-long-random-value
+```
+
+Restart `npm run dev`. Every route now redirects to `/preview-access` until you enter `PREVIEW_ACCESS_KEY`. Leave `PREVIEW_GATE_ENABLED` unset (or `false`) for normal local development — this is the default, so cloning the repo and following "Local development" above is unaffected.
+
+**2. Required environment variables** — see the table above. All three (`PREVIEW_GATE_ENABLED`, `PREVIEW_ACCESS_KEY`, `PREVIEW_COOKIE_SECRET`) are server-only; none is ever prefixed `NEXT_PUBLIC_`, sent to the browser, or logged. If the gate is enabled but either secret is missing, the app **fails closed** — every route except `/preview-access` itself returns a generic 503 rather than silently letting traffic through.
+
+**3. Configure in Vercel** — Project Settings → Environment Variables. Add all three for whichever environments should be gated (typically Production, and Preview too if preview deployments should also stay private). Changing any of them requires a new deployment to take effect, the same as every other environment variable in this app (see "Vercel preview deployments" below).
+
+**4. Rotate the shared key** — update `PREVIEW_ACCESS_KEY` in Vercel and redeploy. Existing visitors keep their access (the cookie only proves the key was verified at some point, it doesn't embed the key), so this alone does **not** revoke already-authorized browsers — see the next item for that.
+
+**5. Invalidate existing preview cookies** — either:
+   - rotate `PREVIEW_COOKIE_SECRET` in Vercel and redeploy (every previously issued cookie fails signature verification), or
+   - bump `PREVIEW_TOKEN_VERSION` in `src/lib/preview-gate/cookie.ts` (a code change) and deploy — every previously issued cookie fails the version check.
+
+**6. Disable before public launch** — set `PREVIEW_GATE_ENABLED=false` (or remove it) in Vercel and redeploy. No code deletion or route changes needed: the gate becomes a clean pass-through, `/` shows the normal public welcome page, and `/preview-access` itself redirects to `/`.
+
+**Known limitation:** the key-validation rate limiter (`src/lib/preview-gate/rate-limit.ts`) is an in-memory, per-instance counter — intentionally not backed by Redis/Upstash for a temporary, low-traffic gate. It still meaningfully slows down guessing on a single warm instance, but a high-traffic attacker spread across many cold serverless instances would get a looser effective limit than the configured threshold suggests.
 
 ## Supabase Auth configuration changes
 
@@ -437,12 +471,14 @@ docs/
 supabase/
   migrations/               # 0001 schema · 0002 functions (RPCs) · 0003 RLS policies · 0004 Data API grants
 src/
-  middleware.ts              # refreshes the Supabase session; redirects unauthenticated requests
-                              #   to /login, except the public paths (/, /get-started, /login,
-                              #   /auth/callback) — see "Public entry & sign-in" above
+  middleware.ts              # preview gate first (see "Preview access gate" above), then refreshes
+                              #   the Supabase session; redirects unauthenticated requests to /login,
+                              #   except the public paths (/, /get-started, /login, /auth/callback,
+                              #   /preview-access) — see "Public entry & sign-in" above
   app/
     page.tsx                # public welcome page ("/"), or redirects an authenticated visitor to /journey
     get-started/            # public buyer/homeowner pre-selection ("/get-started")
+    preview-access/          # temporary preview-gate entry page, form, and validation server action
     login/                  # email OTP + magic-link sign-in (also serves sign-up)
     auth/callback/          # PKCE code exchange for the magic-link path
     manifest.ts icon.tsx apple-icon.tsx icons/  # PWA manifest + generated icons
@@ -465,6 +501,8 @@ src/
     migration-banner.tsx    # the one-time "Local Home data found" import flow
     modal.tsx toast.tsx app-nav.tsx app-shell.tsx bottom-nav.tsx providers.tsx …
   lib/
+    preview-gate/            # config, signed-cookie token, timing-safe compare, in-memory rate
+                              #   limit, return-to sanitization — see "Preview access gate" above
     supabase/               # browser client, server client, middleware helper
     workspace/                # buyer/homeowner mode: resolver, service, hooks, onboarding-gate,
                               #   navigation.ts (per-mode nav config + route protection), mode-context.tsx,
@@ -505,6 +543,8 @@ The distinction between `lib/guide` (content) and `lib/journey` (engines over sa
 `npm test` covers the calculation core (mortgage payment, cumulative interest, closing cash, reserves, DTI, guardrail classification, the combined plan evaluation, comparison, lender estimates, the overall score), JSON export/import validation, the legacy local database (seeding idempotency and the export → wipe → import round-trip, plus the migration read path that a real browser upgrade would exercise), and a **journey engine suite** verifying guide-content integrity (18 unique stages, globally-unique action/decision ids, an attending contract weighted far above reading a resource), deterministic `autoCheck` criteria (guardrails, childcare, the attending-timing risk, distinct-lender counting, visit-before-Primary), weighted progress and descriptive readiness, the next-action rules (including the critical walk-away-exceeded warning), and personalization token substitution. It also covers the **property form draft ↔ persisted boundary** (`lib/property-form`: a draft may start with an empty address; `prepareProperty` trims and rejects an empty/whitespace address inline, and only a saved property must satisfy the strict `propertySchema`) and the Homes search filter (`lib/property-search`).
 
 The Supabase-backed read/write layer (`lib/hooks.ts`, `lib/repo.ts`) is not covered by automated tests — there is no CI Supabase instance to run against (see "Suggested future enhancements"). It has been verified manually against a real project.
+
+The **preview access gate** (`lib/preview-gate/`) is covered end-to-end at the request level: `gate.test.ts` drives `evaluatePreviewGate` with real `NextRequest` objects (disabled passes everything through; enabled redirects unauthorized page requests and returns the documented JSON shape for `/api/*`; `/preview-access` itself is always reachable; a valid cookie passes, an expired/tampered/wrong-secret cookie doesn't; a missing-secret misconfiguration fails closed with a 503 everywhere except the access page). `token.test.ts`, `return-to.test.ts`, `rate-limit.test.ts`, `crypto.test.ts`, and `config.test.ts` cover the signed-cookie round trip and rotation/version invalidation, open-redirect rejection, the rate limiter's window/reset behavior, the timing-safe comparison, and env-var validation, respectively. The page and server action themselves (`app/preview-access/`) aren't unit tested, for the same reason as the Supabase layer above — they depend on Next's request-scoped `cookies()`/`headers()`/`redirect()`, which need a running Next server rather than a bare Vitest environment.
 
 ---
 
