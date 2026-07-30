@@ -20,17 +20,32 @@ export function ActionRow({
   action,
   stageId,
   state,
+  emphasize = false,
+  quickSkipLabel,
 }: {
   action: GuideAction;
   stageId: string;
   state: JourneyActionState | undefined;
+  /** First-time buyers: prominent styling, detail area open by default. */
+  emphasize?: boolean;
+  /** Repeat buyers: a one-click "not applicable" affordance shown while not-started. */
+  quickSkipLabel?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(emphasize);
   const status = state?.status ?? "not-started";
   const done = SETTLED.includes(status);
 
   return (
-    <div className={cn("rounded-lg border p-3", done ? "border-line bg-surface-muted/40" : "border-line bg-surface")}>
+    <div
+      className={cn(
+        "rounded-lg border p-3",
+        done
+          ? "border-line bg-surface-muted/40"
+          : emphasize
+            ? "border-[color:var(--mode-accent-border)] bg-mode-accent-muted/40"
+            : "border-line bg-surface",
+      )}
+    >
       <div className="flex items-start gap-3">
         <button
           type="button"
@@ -68,6 +83,11 @@ export function ActionRow({
               </span>
             </button>
             <div className="flex shrink-0 items-center gap-2">
+              {emphasize && !done && (
+                <span className="rounded-full bg-mode-accent px-2 py-0.5 text-[11px] font-medium text-white">
+                  Start here
+                </span>
+              )}
               {state?.owner && state.owner !== "both" && (
                 <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[11px] text-ink-subtle">
                   {OWNER_LABELS[state.owner]}
@@ -86,6 +106,15 @@ export function ActionRow({
           <p className="mt-0.5 text-xs text-ink-subtle">{action.why}</p>
           {state?.dueDate && !open && (
             <p className="mt-1 text-[11px] text-caution">Due {dateLabel(state.dueDate)}</p>
+          )}
+          {quickSkipLabel && status === "not-started" && (
+            <button
+              type="button"
+              onClick={() => void setActionState(action.id, stageId, { status: "not-applicable" })}
+              className="mt-1 text-xs text-accent hover:underline"
+            >
+              {quickSkipLabel}
+            </button>
           )}
         </div>
       </div>

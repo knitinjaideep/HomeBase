@@ -141,6 +141,13 @@ describe("guide content integrity", () => {
     const readConcepts = ALL_ACTIONS.find((a) => a.id === "mortgage-options.read-concepts");
     expect(contract!.weight).toBeGreaterThan(readConcepts!.weight * 2);
   });
+
+  it("includes the first-time-buyer 'understand the process' prep item in strategy", () => {
+    const action = ALL_ACTIONS.find((a) => a.id === "strategy.understand-process");
+    expect(action).toBeDefined();
+    expect(action!.stageId).toBe("strategy");
+    expect(action!.weight).toBe(2);
+  });
 });
 
 describe("criteria evaluation", () => {

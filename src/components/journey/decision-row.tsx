@@ -6,6 +6,7 @@ import type { JourneyDecision } from "@/lib/models";
 import { saveDecision } from "@/lib/repo";
 import { Textarea, Chip } from "@/components/ui";
 import { cn } from "@/lib/util";
+import type { BuyerCopy } from "@/lib/journey/buyer-copy";
 
 /**
  * A structured decision. Records the answer and, where the guide asks for it,
@@ -18,12 +19,14 @@ export function DecisionRow({
   record,
   buyer1Name,
   buyer2Name,
+  copy,
 }: {
   decision: GuideDecision;
   stageId: string;
   record: JourneyDecision | undefined;
   buyer1Name: string;
   buyer2Name: string;
+  copy: BuyerCopy;
 }) {
   const [answer, setAnswer] = useState(record?.answer ?? "");
   const b1 = record?.buyer1Approved ?? false;
@@ -75,7 +78,7 @@ export function DecisionRow({
             className="mt-2"
             rows={2}
             value={answer}
-            placeholder="Our decision…"
+            placeholder={`${copy.possessiveCapitalized} decision…`}
             onChange={(e) => setAnswer(e.target.value)}
             onBlur={(e) => persist({ answer: e.target.value })}
           />

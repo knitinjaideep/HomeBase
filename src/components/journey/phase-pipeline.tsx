@@ -107,7 +107,8 @@ function PhaseDot({ status }: { status: PhaseStatus }) {
   if (status === "current") {
     return (
       <span
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent ring-4 ring-accent-soft"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-mode-accent"
+        style={{ boxShadow: "0 0 0 4px var(--mode-accent-muted), 0 0 20px 6px var(--mode-accent-glow)" }}
         aria-label="Current phase"
       >
         <span className="h-2 w-2 rounded-full bg-white" />
@@ -139,7 +140,10 @@ function MobileDot({ status }: { status: PhaseStatus }) {
   }
   if (status === "current") {
     return (
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent ring-[3px] ring-accent-soft">
+      <span
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-mode-accent"
+        style={{ boxShadow: "0 0 0 3px var(--mode-accent-muted), 0 0 10px 3px var(--mode-accent-glow)" }}
+      >
         <span className="h-1.5 w-1.5 rounded-full bg-white" />
       </span>
     );
