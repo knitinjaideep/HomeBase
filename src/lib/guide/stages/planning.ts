@@ -36,6 +36,13 @@ const strategy: GuideStage = {
   ],
   actions: [
     {
+      id: "strategy.understand-process",
+      title: "Understand how this whole process works, end to end",
+      why: "Knowing what's coming — and roughly when — makes every later decision faster and calmer.",
+      defaultOwner: "both",
+      weight: 2,
+    },
+    {
       id: "strategy.target-period",
       title: "Confirm our target purchase period",
       why: "Every deadline in this guide counts backward from the closing window.",

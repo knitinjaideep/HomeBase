@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useChecklists, useProperties, useTasks } from "@/lib/hooks";
 import { createChecklist } from "@/lib/repo";
+import { JOURNEY_CHECKLIST_CATEGORY_PREFIX } from "@/lib/journey/custom-checklist";
 import { Button, Field, Input, PageHeader, Panel, Select, Toggle } from "@/components/ui";
 import { ChecklistCard } from "@/components/timeline/checklist-card";
 import { DocumentIndex } from "@/components/documents/document-index";
@@ -45,7 +46,7 @@ export default function TimelinePage() {
     .filter((c) => c.kind === "timeline")
     .sort((a, b) => a.order - b.order);
   const templates = checklists
-    .filter((c) => c.kind === "template")
+    .filter((c) => c.kind === "template" && !c.category.startsWith(JOURNEY_CHECKLIST_CATEGORY_PREFIX))
     .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
 
   const addChecklist = async () => {

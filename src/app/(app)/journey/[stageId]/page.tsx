@@ -16,9 +16,14 @@ import { DecisionRow } from "@/components/journey/decision-row";
 import { QuestionSetView } from "@/components/journey/question-set";
 import { AttendingTracker } from "@/components/journey/attending-tracker";
 import { TownResearchTool } from "@/components/journey/town-research-tool";
+import { StageChecklistPanel } from "@/components/journey/stage-checklist-panel";
 import { Overlay } from "@/components/modal";
 import { NoteContextPanel } from "@/components/notes/note-context-panel";
 import { JOURNEY_STATUS_LABELS } from "@/lib/labels";
+import { useBuyerModeProfile } from "@/lib/workspace/hooks";
+import { buyerCopy } from "@/lib/journey/buyer-copy";
+import { useChecklists, useTasks } from "@/lib/hooks";
+import { findStageChecklist } from "@/lib/journey/custom-checklist";
 import type { JourneyStatus } from "@/lib/models";
 import type { JourneySnapshot } from "@/lib/journey/snapshot";
 import type { GuideStage } from "@/lib/guide";
@@ -41,6 +46,20 @@ function StageView({ stage, s }: { stage: GuideStage; s: JourneySnapshot }) {
   const actionStateById = useMemo(() => new Map(s.actions.map((a) => [a.id, a])), [s.actions]);
   const decisionById = useMemo(() => new Map(s.decisions.map((d) => [d.id, d])), [s.decisions]);
   const stageState = s.stageStates.find((x) => x.id === stage.id);
+
+  const buyerMode = useBuyerModeProfile();
+  const copy = useMemo(() => buyerCopy(buyerMode), [buyerMode]);
+
+  const checklists = useChecklists();
+  const tasks = useTasks();
+  const stageChecklist = useMemo(
+    () => findStageChecklist(checklists ?? [], stage.id),
+    [checklists, stage.id],
+  );
+  const stageChecklistTasks = useMemo(
+    () => (tasks ?? []).filter((t) => t.checklistId === stageChecklist?.id),
+    [tasks, stageChecklist],
+  );
 
   const index = GUIDE_STAGES.findIndex((x) => x.id === stage.id);
   const prev = index > 0 ? GUIDE_STAGES[index - 1] : undefined;
@@ -116,8 +135,35 @@ function StageView({ stage, s }: { stage: GuideStage; s: JourneySnapshot }) {
               action={action}
               stageId={stage.id}
               state={actionStateById.get(action.id)}
+              emphasize={action.id === "strategy.understand-process" && copy.isFirstTime}
+              quickSkipLabel={
+                action.id === "strategy.understand-process" && copy.isRepeat
+                  ? "Not applicable — I've done this before"
+                  : undefined
+              }
             />
           ))}
+        </div>
+      </section>
+
+      {/* The household's own items — anything the guide doesn't cover */}
+      <section className="mt-8">
+        <h2 className="font-display text-lg text-ink">{copy.possessiveCapitalized} own checklist items</h2>
+        <p className="mt-1 text-xs text-ink-subtle">
+          Anything not on the guide above. These don&rsquo;t count toward the stage&rsquo;s progress bar.
+        </p>
+        <div className="mt-3">
+          {checklists === undefined || tasks === undefined ? (
+            <p className="text-sm text-ink-subtle">Loading…</p>
+          ) : (
+            <StageChecklistPanel
+              stageId={stage.id}
+              stageTitle={stage.title}
+              checklist={stageChecklist}
+              tasks={stageChecklistTasks}
+              properties={s.properties}
+            />
+          )}
         </div>
       </section>
 
@@ -134,6 +180,7 @@ function StageView({ stage, s }: { stage: GuideStage; s: JourneySnapshot }) {
                 record={decisionById.get(decision.id)}
                 buyer1Name={s.household.buyer1Name}
                 buyer2Name={s.household.buyer2Name}
+                copy={copy}
               />
             ))}
           </div>
