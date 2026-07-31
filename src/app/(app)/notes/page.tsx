@@ -6,9 +6,11 @@ import {
   useAllVisits,
   useDeals,
   useDocuments,
+  useMaintenanceItems,
   useNotes,
   useProfessionals,
   useProperties,
+  useRepairProjects,
 } from "@/lib/hooks";
 import { resolveNoteContext } from "@/lib/notes/context";
 import { filterNotes, allTags } from "@/lib/notes/filter";
@@ -34,6 +36,8 @@ export default function NotesPage() {
   const deals = useDeals();
   const documents = useDocuments();
   const professionals = useProfessionals();
+  const maintenanceItems = useMaintenanceItems();
+  const repairProjects = useRepairProjects();
   const { notify } = useToast();
   const searchParams = useSearchParams();
 
@@ -66,11 +70,11 @@ export default function NotesPage() {
     );
   }, [notes, query, contextFilter, selectedTags, pinnedOnly, showArchived, scopeId]);
 
-  if (!notes || !properties || !visits || !deals || !documents || !professionals) {
+  if (!notes || !properties || !visits || !deals || !documents || !professionals || !maintenanceItems || !repairProjects) {
     return <div className="text-ink-subtle">Loading…</div>;
   }
 
-  const contextData = { properties, visits, deals, documents, professionals };
+  const contextData = { properties, visits, deals, documents, professionals, maintenanceItems, repairProjects };
 
   return (
     <div>

@@ -6,9 +6,11 @@ import type {
   DocumentStatus,
   HouseholdRole,
   JourneyStatus,
+  MaintenanceStatus,
   NoteContextType,
   NoteType,
   ProfessionalRole,
+  RepairStatus,
   SelectionStatus,
   TownDesignation,
 } from "./models";
@@ -214,6 +216,11 @@ export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
   "loan-estimate": "Loan Estimate",
   "closing-disclosure": "Closing Disclosure",
   "closing-documents": "Closing documents",
+  warranty: "Warranty",
+  receipt: "Receipt",
+  manual: "Manual",
+  photo: "Photo",
+  "home-record": "Home record",
 };
 
 export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
@@ -252,3 +259,26 @@ export const NOTE_TYPE_LABELS: Record<NoteType, string> = {
   decision: "Decision",
   "follow-up": "Follow-up",
 };
+
+// ---- HomeBase (maintenance / repairs) --------------------------------------
+
+export const MAINTENANCE_STATUS_LABELS: Record<MaintenanceStatus, string> = {
+  active: "Active",
+  completed: "Completed",
+  skipped: "Skipped",
+  archived: "Archived",
+};
+
+export const REPAIR_STATUS_LABELS: Record<RepairStatus, string> = {
+  planned: "Planned",
+  "in-progress": "In progress",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+export const MAINTENANCE_URGENCY_LABELS = {
+  overdue: "Overdue",
+  "due-soon": "Due soon",
+  upcoming: "Upcoming",
+  "no-date": "No date set",
+} as const;

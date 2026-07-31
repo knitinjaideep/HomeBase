@@ -21,6 +21,9 @@ import { resourceSchema } from "./resource";
 import { documentRecordSchema } from "./document";
 import { dealSchema } from "./deal";
 import { noteSchema } from "./note";
+import { ownedHomeSchema } from "./home";
+import { maintenanceItemSchema } from "./maintenance";
+import { repairProjectSchema } from "./repair";
 
 export * from "./common";
 export * from "./profile";
@@ -35,6 +38,9 @@ export * from "./deal";
 export * from "./household";
 export * from "./workspace";
 export * from "./note";
+export * from "./home";
+export * from "./maintenance";
+export * from "./repair";
 
 /**
  * The complete backup envelope for export/import. Every array is validated with
@@ -70,6 +76,9 @@ export const backupSchema = z.object({
     documents: z.array(documentRecordSchema).default([]),
     deals: z.array(dealSchema).default([]),
     notes: z.array(noteSchema).default([]),
+    ownedHome: z.array(ownedHomeSchema).default([]),
+    maintenanceItems: z.array(maintenanceItemSchema).default([]),
+    repairProjects: z.array(repairProjectSchema).default([]),
   }),
 });
 export type Backup = z.infer<typeof backupSchema>;

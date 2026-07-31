@@ -29,6 +29,13 @@ export const documentCategorySchema = z.enum([
   "loan-estimate",
   "closing-disclosure",
   "closing-documents",
+  // Owner-mode categories (maintenance/repairs) — see relatedMaintenanceItemId
+  // / relatedRepairProjectId below.
+  "warranty",
+  "receipt",
+  "manual",
+  "photo",
+  "home-record",
 ]);
 export type DocumentCategory = z.infer<typeof documentCategorySchema>;
 
@@ -49,6 +56,9 @@ export const documentRecordSchema = baseEntitySchema.extend({
   documentDate: z.string().nullable().default(null),
   relatedStageId: z.string().nullable().default(null),
   relatedPropertyId: idSchema.nullable().default(null),
+  /** Owner mode: optionally links a document to one maintenance item or repair project. */
+  relatedMaintenanceItemId: idSchema.nullable().default(null),
+  relatedRepairProjectId: idSchema.nullable().default(null),
   /** Where the real file lives — "home safe", "shared drive folder", etc. */
   storedLocation: z.string().default(""),
   notes: z.string().default(""),

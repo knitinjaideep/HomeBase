@@ -1,5 +1,15 @@
 import { getStage } from "@/lib/guide";
-import type { Deal, DocumentRecord, Note, NoteContextType, Professional, Property, PropertyVisit } from "@/lib/models";
+import type {
+  Deal,
+  DocumentRecord,
+  MaintenanceItem,
+  Note,
+  NoteContextType,
+  Professional,
+  Property,
+  PropertyVisit,
+  RepairProject,
+} from "@/lib/models";
 
 /**
  * Household-scoped collections a note's context might resolve against. Every
@@ -15,6 +25,8 @@ export interface NoteContextData {
   deals: Pick<Deal, "id" | "propertyId">[];
   documents: Pick<DocumentRecord, "id" | "name">[];
   professionals: Pick<Professional, "id" | "name">[];
+  maintenanceItems: Pick<MaintenanceItem, "id" | "title">[];
+  repairProjects: Pick<RepairProject, "id" | "title">[];
 }
 
 export interface ResolvedNoteContext {
@@ -85,10 +97,23 @@ export function resolveNoteContext(note: Note, data: NoteContextData): ResolvedN
     }
     case "ownedHome":
       return { label: "Owned home", href: "/homebase", available: true };
-    case "maintenanceItem":
-      return { label: "Maintenance item", href: "/maintenance", available: true };
-    case "repairProject":
-      return { label: "Repair or project", href: "/maintenance", available: true };
+    case "maintenanceItem": {
+      // contextId: null means "category only" (e.g. from the panel on
+      // /maintenance with no specific item selected) — always available,
+      // same as before real records existed.
+      if (contextId === null) return { label: "Maintenance item", href: "/maintenance", available: true };
+      const item = data.maintenanceItems.find((i) => i.id === contextId);
+      return item
+        ? { label: item.title, href: `/maintenance?item=${item.id}`, available: true }
+        : { label: "Maintenance item", href: null, available: false };
+    }
+    case "repairProject": {
+      if (contextId === null) return { label: "Repair or project", href: "/maintenance", available: true };
+      const project = data.repairProjects.find((p) => p.id === contextId);
+      return project
+        ? { label: project.title, href: `/maintenance?project=${project.id}`, available: true }
+        : { label: "Repair or project", href: null, available: false };
+    }
   }
 }
 
