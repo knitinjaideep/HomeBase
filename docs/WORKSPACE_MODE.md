@@ -224,3 +224,34 @@ guardrails, credit scores). `buyerModeProfile` is the small path-selection
 record captured at onboarding (`experience`, `arrangement`,
 `targetPurchaseDate`, `participantNames`). They are kept separate rather than
 overloading the existing table.
+
+## Converting a candidate home into the owned home
+
+A household doesn't have to manually re-enter their home's details after
+closing. From a property that's reached the offer/closing stage, "I bought
+this home" (`src/components/property/convert-to-homeowner-dialog.tsx`)
+promotes that `properties` row into the existing `ownedHome` singleton
+(`src/lib/purchase/service.ts`) rather than copying its data into a second
+record:
+
+- `ownedHome.sourcePropertyId` (added in
+  `supabase/migrations/0027_purchase_conversion_schema.sql`) is the explicit
+  link back to the source property — nullable, `on delete set null`, so a
+  hard-deleted property can never take the owned home down with it.
+- `properties.status` gains a terminal `'purchased'` value. Visits, notes,
+  the deal record, and documents keep pointing at the same property id they
+  always did — nothing about them moves or gets duplicated.
+- Switching `activeMode` to `owning` is optional and handled by the existing
+  `completeOwnerOnboarding` (composed, not reimplemented). Declining it still
+  marks the property purchased and creates the owned-home record; the
+  household just stays in buying mode.
+- Write order (property loaded → `ownedHome` upserted → mode switched, if
+  requested → property marked `purchased` last) mirrors
+  `completeOwnerOnboarding`'s own "safe partial state" ordering: every step
+  before the final one is idempotent, so a failure partway through always
+  leaves the "I bought this home" button re-clickable rather than stuck.
+- The completed buying journey stays reachable, read-only, at
+  `/homebase/history` — deliberately nested under the already owner-only
+  `/homebase` prefix instead of linking into the buyer-only `/properties/:id`
+  route, which a homeowner-mode workspace is redirected away from (see
+  `isRouteAvailableForMode` above).

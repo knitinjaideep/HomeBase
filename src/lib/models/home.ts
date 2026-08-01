@@ -40,6 +40,13 @@ export const ownedHomeSchema = baseEntitySchema.extend({
   purchaseDate: z.string().nullable().default(null),
   purchasePrice: moneySchema.default(null),
   systems: z.array(homeSystemSchema).default([]),
+  /**
+   * The `properties` row this home was promoted from, if it started as a
+   * buyer-mode candidate home — see src/lib/purchase/service.ts. Null for a
+   * home entered directly in owner mode. `on delete set null` in SQL, so a
+   * hard-deleted property never takes the owned home down with it.
+   */
+  sourcePropertyId: idSchema.nullable().default(null),
 });
 export type OwnedHome = z.infer<typeof ownedHomeSchema>;
 

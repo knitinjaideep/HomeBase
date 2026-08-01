@@ -25,6 +25,7 @@ import {
 } from "@/components/ui";
 import { Overlay, ConfirmDialog } from "@/components/modal";
 import { PropertyForm } from "@/components/property/property-form";
+import { ConvertToHomeownerDialog } from "@/components/property/convert-to-homeowner-dialog";
 import { useToast } from "@/components/toast";
 import {
   PARKING_LABELS,
@@ -72,6 +73,7 @@ export default function PropertyDetailPage() {
   const [tab, setTab] = useState<Tab>("Overview");
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [converting, setConverting] = useState(false);
 
   if (property === undefined || !financial || !household) {
     return <div className="text-ink-subtle">Loading…</div>;
@@ -90,6 +92,11 @@ export default function PropertyDetailPage() {
   const e = evaluateProperty(property, financial, household);
   const { plan } = e;
   const isShortlisted = property.status === "shortlisted";
+  const isPurchased = property.status === "purchased";
+  const canConvert =
+    !isPurchased &&
+    (["possible-offer", "offer-submitted", "under-contract"].includes(property.status) ||
+      Boolean(deal?.postClosing.closingCompleted));
 
   const handleDelete = async () => {
     await deleteProperty(property.id);
@@ -167,6 +174,20 @@ export default function PropertyDetailPage() {
         >
           {isShortlisted ? "Shortlisted ✓" : "Shortlist"}
         </button>
+        {isPurchased ? (
+          <span className="inline-flex min-h-[2.5rem] items-center rounded-lg border border-positive/40 bg-positive/12 px-4 text-sm font-medium text-positive">
+            Purchased ✓
+          </span>
+        ) : (
+          canConvert && (
+            <button
+              onClick={() => setConverting(true)}
+              className="inline-flex min-h-[2.5rem] items-center rounded-lg border border-positive/40 bg-positive/12 px-4 text-sm font-medium text-positive hover:opacity-90"
+            >
+              I bought this home
+            </button>
+          )
+        )}
       </div>
 
       {/* Secondary actions, deliberately quiet */}
@@ -392,6 +413,13 @@ export default function PropertyDetailPage() {
       <Overlay open={editing} onClose={() => setEditing(false)} title="Edit property" variant="drawer">
         <PropertyForm property={property} onDone={() => setEditing(false)} />
       </Overlay>
+
+      <ConvertToHomeownerDialog
+        open={converting}
+        onClose={() => setConverting(false)}
+        property={property}
+        deal={deal ?? undefined}
+      />
 
       <ConfirmDialog
         open={confirmDelete}
