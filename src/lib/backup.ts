@@ -109,10 +109,13 @@ export async function collectBackup(db: HomeScopeDB): Promise<Backup> {
       resources,
       documents,
       deals,
-      // The legacy local Dexie store predates the Notes feature and has no
-      // table for it — nothing to migrate for a feature that never existed
-      // in the local-only app.
+      // The legacy local Dexie store predates the Notes/HomeBase features and
+      // has no tables for them — nothing to migrate for features that never
+      // existed in the local-only app.
       notes: [],
+      ownedHome: [],
+      maintenanceItems: [],
+      repairProjects: [],
     },
   };
 }
@@ -196,6 +199,9 @@ export function summarizeBackup(data: BackupData): { label: string; count: numbe
     { label: "Documents indexed", count: data.documents.length },
     { label: "Property deals", count: data.deals.length },
     { label: "Notes", count: data.notes.length },
+    { label: "Owned home profile", count: data.ownedHome.length },
+    { label: "Maintenance items", count: data.maintenanceItems.length },
+    { label: "Repairs & projects", count: data.repairProjects.length },
   ];
 }
 
@@ -288,6 +294,9 @@ const CLOUD_TABLES: Record<keyof BackupData, string> = {
   documents: "documents",
   deals: "deals",
   notes: "notes",
+  ownedHome: "ownedHome",
+  maintenanceItems: "maintenanceItems",
+  repairProjects: "repairProjects",
 };
 
 /** Read the household's entire Supabase database into a validated backup envelope. */

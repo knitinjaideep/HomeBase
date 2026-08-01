@@ -19,17 +19,22 @@ import {
   journeyDecisionSchema,
   journeyStageStateSchema,
   lenderQuoteSchema,
+  maintenanceItemSchema,
   mortgageApprovalSchema,
   mortgageScenarioSchema,
   noteSchema,
+  OWNED_HOME_TABLE,
   professionalSchema,
   propertySchema,
   propertyVisitSchema,
+  repairProjectSchema,
   resourceSchema,
   townResearchSchema,
   type Note,
   type NoteContextType,
+  type OwnedHome,
 } from "@/lib/models";
+import { loadOwnedHomeCore } from "@/lib/maintenance/service";
 
 /**
  * Reactive reads, Supabase-backed. Each returns `undefined` until the first
@@ -257,6 +262,42 @@ export function useNotesForContext(contextType: NoteContextType | undefined, con
 
 export function useDeals() {
   return useCollection("deals", dealSchema);
+}
+
+// ---- HomeBase: owned home, maintenance items, repair projects -------------
+
+/**
+ * The owned-home singleton: `undefined` until first load, then the row or
+ * `null` when the household has never saved one — same "not yet saved" vs.
+ * "still loading" distinction as `useOwnerModeProfile()`
+ * (lib/workspace/hooks.ts), and for the same reason: unlike the seeded
+ * singletons (buyerProfile, financialProfile, ...), a brand-new household
+ * has no ownedHome row until the homeowner fills in the overview form.
+ */
+export function useOwnedHome(): OwnedHome | null | undefined {
+  const { householdId } = useHouseholdContext();
+  return useQuery(() => loadOwnedHomeCore(createClient(), householdId), {
+    deps: [householdId],
+    watch: [OWNED_HOME_TABLE],
+  });
+}
+
+export function useMaintenanceItems() {
+  return useCollection("maintenanceItems", maintenanceItemSchema);
+}
+
+export function useRepairProjects() {
+  return useCollection("repairProjects", repairProjectSchema);
+}
+
+/** Documents linked to one specific maintenance item — see documents.relatedMaintenanceItemId. */
+export function useDocumentsForMaintenanceItem(id: string | undefined) {
+  return useFilteredCollection("documents", documentRecordSchema, "relatedMaintenanceItemId", id);
+}
+
+/** Documents linked to one specific repair/project — see documents.relatedRepairProjectId. */
+export function useDocumentsForRepairProject(id: string | undefined) {
+  return useFilteredCollection("documents", documentRecordSchema, "relatedRepairProjectId", id);
 }
 
 export function useDealForProperty(propertyId: string | undefined) {

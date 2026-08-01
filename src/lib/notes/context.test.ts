@@ -20,7 +20,15 @@ function note(overrides: Partial<Note>): Note {
   };
 }
 
-const emptyData: NoteContextData = { properties: [], visits: [], deals: [], documents: [], professionals: [] };
+const emptyData: NoteContextData = {
+  properties: [],
+  visits: [],
+  deals: [],
+  documents: [],
+  professionals: [],
+  maintenanceItems: [],
+  repairProjects: [],
+};
 
 describe("resolveNoteContext", () => {
   it("returns null for a general note (no context)", () => {
@@ -61,6 +69,34 @@ describe("resolveNoteContext", () => {
   it("treats owner-mode categories with no backing entity yet as available, category-only", () => {
     const result = resolveNoteContext(note({ contextType: "maintenanceItem" }), emptyData);
     expect(result).toEqual({ label: "Maintenance item", href: "/maintenance", available: true });
+  });
+
+  it("resolves a note linked to a real maintenance item by id", () => {
+    const data: NoteContextData = {
+      ...emptyData,
+      maintenanceItems: [{ id: "m1", title: "Replace HVAC filter" }],
+    };
+    const result = resolveNoteContext(note({ contextType: "maintenanceItem", contextId: "m1" }), data);
+    expect(result).toEqual({ label: "Replace HVAC filter", href: "/maintenance?item=m1", available: true });
+  });
+
+  it("marks a note as unavailable when its linked maintenance item was deleted", () => {
+    const result = resolveNoteContext(note({ contextType: "maintenanceItem", contextId: "gone" }), emptyData);
+    expect(result).toEqual({ label: "Maintenance item", href: null, available: false });
+  });
+
+  it("resolves a note linked to a real repair project by id", () => {
+    const data: NoteContextData = {
+      ...emptyData,
+      repairProjects: [{ id: "r1", title: "Repaint exterior trim" }],
+    };
+    const result = resolveNoteContext(note({ contextType: "repairProject", contextId: "r1" }), data);
+    expect(result).toEqual({ label: "Repaint exterior trim", href: "/maintenance?project=r1", available: true });
+  });
+
+  it("treats a category-only repair-project note as available with no specific record", () => {
+    const result = resolveNoteContext(note({ contextType: "repairProject" }), emptyData);
+    expect(result).toEqual({ label: "Repair or project", href: "/maintenance", available: true });
   });
 
   it("resolves a journey stage from the static guide content", () => {

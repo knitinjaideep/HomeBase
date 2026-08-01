@@ -37,6 +37,9 @@ function validBackup(): Backup {
       documents: [],
       deals: [],
       notes: [],
+      ownedHome: [],
+      maintenanceItems: [],
+      repairProjects: [],
     },
   };
 }
