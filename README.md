@@ -30,12 +30,14 @@ Every guided step page follows the same shape: **what it accomplishes · why it 
 - **Finances** — a transparent mortgage & cash planner with named, duplicable scenarios.
 - **Lenders** — a quote tracker plus a separate **approvals** tab that distinguishes readiness conversation → prequalification → formal preapproval → fully underwritten. Never ranked by rate alone.
 - **Professionals** — a role-based directory with interview banks, agent licence/experience verification, an agent scorecard, and a deliberate select-one-per-role workflow.
-- **Timeline** — the plan and reusable checklists, plus a **documents index** (records that a document exists and where it lives; no files are stored).
+- **Timeline** — the plan and reusable checklists.
+- **Documents** *(`/documents`, shared with homeowner mode)* — a mode-aware document record: category sections, search/filters, an expiring/renewal panel, and an optional real file upload (a private Supabase Storage bucket — see "Document file storage" below) alongside the option to just log where a physical original lives.
+- **Toolkit** *(`/toolkit`, shared with homeowner mode)* — buyer tools grouped by Money/Homes/People/Planning, plus a small deterministic "Recommended next" panel. Homeowner mode gets its own grouping (Maintenance/Home records/Planning) on the same page — see `src/lib/toolkit/groups.ts`.
 - **Resources** — a curated library of primary-source links (federal, NJ, regulator, then established organizations), each with our own summary, a "report outdated" action, and a restore-curated-set option.
 - **Settings** — household members and family invitations, the household planning profile that personalizes the whole guide, plus data & backups and account sign-out.
 - **Notes** *(`/notes`)* — a small, freeform notes feature shared by both HomeScope paths (buyer and homeowner alike), for anything that doesn't belong to a more specific tool.
 
-The nav above is buyer mode. Homeowner mode (`activeMode = "owning"`, see **`docs/WORKSPACE_MODE.md`**) sees **HomeBase** (`/homebase`, its landing page) and **Maintenance** (`/maintenance`, a placeholder today — real maintenance tracking is a future PR) instead of Journey/Properties/Toolkit — the buyer-only tools (Compare, Finances, Lenders, Professionals, Resources, Timeline, and the Toolkit hub bundling them) stay buyer-only, since their content is pre-purchase specific. `src/lib/workspace/navigation.ts` is the single source of truth for which destinations exist per mode, the default landing route per mode, and route access protection (a buyer opening a homeowner-only URL, or vice versa, is redirected rather than shown the wrong experience).
+The nav above is buyer mode. Homeowner mode (`activeMode = "owning"`, see **`docs/WORKSPACE_MODE.md`**) sees **HomeBase** (`/homebase`, its landing page), **Maintenance** (`/maintenance`), **Notes**, and **Toolkit** instead of Journey/Properties — the buyer-only *tools* (Compare, Finances, Lenders, Professionals, Resources, Timeline) stay buyer-only, since their content is pre-purchase specific, but the Toolkit hub itself and Documents are shared, mode-aware pages rather than buyer-exclusive. `src/lib/workspace/navigation.ts` is the single source of truth for which destinations exist per mode, the default landing route per mode, and route access protection (a buyer opening a homeowner-only URL, or vice versa, is redirected rather than shown the wrong experience).
 
 ## Public entry & sign-in
 
@@ -52,7 +54,7 @@ Progress is **weighted**, not a raw task count: signing an attending contract co
 
 ## Explicit non-goals
 
-This app deliberately does **not** include: a chatbot or any LLM/AI features, RAG, vector databases, Zillow/MLS scraping, live real-estate or rate APIs, bank-account connections, document OCR/extraction, file uploads, a native mobile app, microservices, background workers, analytics/telemetry, or decorative charts. It is not a blog, course, or encyclopedia. It never shows a blunt "you can afford this" verdict, never blocks saving a property that exceeds a limit, and never claims to replace a lender, attorney, tax professional, inspector, insurance professional, or real-estate agent.
+This app deliberately does **not** include: a chatbot or any LLM/AI features, RAG, vector databases, Zillow/MLS scraping, live real-estate or rate APIs, bank-account connections, document OCR/extraction or automated classification, external data providers, lender integrations, contractor marketplaces, a native mobile app, microservices, background workers, analytics/telemetry, or decorative charts. (Document *upload* is supported — see "Document file storage" below — but HomeScope never reads, classifies, or claims to understand what's inside a file; the user always picks the category themselves.) It is not a blog, course, or encyclopedia. It never shows a blunt "you can afford this" verdict, never blocks saving a property that exceeds a limit, and never claims to replace a lender, attorney, tax professional, inspector, insurance professional, or real-estate agent. "Recommended next" suggestions (Toolkit) are deterministic and rule-based, never based on fabricated usage/popularity metrics.
 
 ---
 
@@ -428,6 +430,10 @@ update the value in Vercel (Production and/or Preview) → redeploy → verify
 
 > This is not full offline support. Actions require a network connection; a failed save shows an error, keeps what you typed, and offers Retry.
 
+### Document file storage
+
+Documents (`/documents`, shared with homeowner mode) can optionally have a real file attached, backed by a private Supabase Storage bucket named `documents` (see `supabase/migrations/0024`/`0025` and `src/lib/documents/storage.ts`). Objects are addressed as `{householdId}/{documentId}/{fileName}`; RLS on `storage.objects` checks household membership against that first path segment, the same `is_household_member()` check every other table's policies use. The bucket is private — there is no public URL — so viewing or downloading a file always goes through a short-lived (60s) signed URL generated on demand, never stored. Uploads are capped at 25MB and restricted to a small allowlist of document/image MIME types (PDF, JPEG/PNG/HEIC/WEBP, Word, plain text) — no executables. The file itself is optional: a household can log "the original is in the home safe" via the existing `storedLocation` text field without ever uploading anything, and both can be set at once.
+
 ### Local data migration
 
 If you used an earlier, local-only version of this app in a browser, a **"Local Home data found"** banner appears once after you sign in. It shows record counts, downloads a JSON backup of that local data first, then imports it into your household's cloud database on confirmation — the local copy in that browser is never deleted, and the banner never reappears once you've imported (or explicitly dismissed it).
@@ -436,6 +442,7 @@ If you used an earlier, local-only version of this app in a browser, a **"Local 
 
 - **Export** (Settings → Data & backups, or the reminder banner) downloads a timestamped `homescope-backup-YYYY-MM-DD-HHMM.json` containing your household's entire cloud database.
 - **Import** validates the file with Zod first, shows a **preview of counts**, and warns that importing **replaces all current data**. A cloud snapshot is saved automatically first (in `localStorage`, for a quick same-device rollback) — the JSON export remains your real independent backup.
+- **Uploaded document files are not part of the JSON export.** A document's row (name, category, `filePath` reference, etc.) is included, but the file bytes live in Supabase Storage's private `documents` bucket, which the JSON backup does not capture. Restoring a backup brings back the document record; if the referenced file was separately lost, only the reference remains.
 - **Printable reports:** a single property (Properties → property → *Print report*) and the shortlist comparison (Compare → *Print comparison*).
 
 ---
@@ -552,8 +559,8 @@ The **preview access gate** (`lib/preview-gate/`) is covered end-to-end at the r
 
 - Estimates use simplified defaults (insurance, escrow, PMI, maintenance). Confirm real numbers with your lender, attorney, and insurer.
 - School information is only as good as what you record and verify.
-- The document index records only that a document exists and where it lives — no files are stored, and sensitive documents deliberately stay out of the database.
-- No photos or calendar integration (by design).
+- Documents supports a real (optional) file upload — see "Document file storage" below — but never reads or classifies what's inside a file; the category, tags, and every other field are always user-entered.
+- No calendar integration (by design). A document's file can be a photo (e.g. a nameplate or a home-inventory shot), but there's no dedicated photo gallery/album feature.
 - The buyer owner labels default to "Me" / "Partner"; names shown in Settings are editable, but the task-owner labels use the defaults.
 - No true offline mode: actions need a network connection. Only property visit notes keep a temporary local draft against a bad connection.
 

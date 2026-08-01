@@ -25,18 +25,25 @@ const BUYER_NAV: NavItem[] = [
   {
     href: "/toolkit",
     label: "Toolkit",
-    matchPrefixes: ["/toolkit", "/compare", "/finances", "/lenders", "/professionals", "/resources", "/timeline"],
+    matchPrefixes: ["/toolkit", "/compare", "/finances", "/lenders", "/professionals", "/resources", "/timeline", "/documents"],
   },
 ];
 
-/** All new: the homeowner experience has no pre-existing nav to preserve. */
+/** Homeowner experience: HomeBase/Maintenance/Notes are new; Toolkit is shared with buying (see below). */
 const OWNER_NAV: NavItem[] = [
   { href: "/homebase", label: "HomeBase" },
   { href: "/maintenance", label: "Maintenance" },
   { href: "/notes", label: "Notes" },
+  { href: "/toolkit", label: "Toolkit", matchPrefixes: ["/toolkit", "/documents"] },
 ];
 
-/** Route prefixes exclusive to buying. Anything not listed here or below is shared. */
+/**
+ * Route prefixes exclusive to buying. Anything not listed here or below is
+ * shared. `/toolkit` itself is deliberately NOT here — it's a shared,
+ * mode-aware page (see lib/toolkit/groups.ts) — but every buyer-only tool it
+ * used to link to for buyers stays buyer-only, so a homeowner opening one of
+ * these directly still gets redirected.
+ */
 const BUYER_ONLY_PREFIXES = [
   "/journey",
   "/properties",
@@ -47,7 +54,6 @@ const BUYER_ONLY_PREFIXES = [
   "/professionals",
   "/resources",
   "/timeline",
-  "/toolkit",
 ];
 
 /** Route prefixes exclusive to owning. */

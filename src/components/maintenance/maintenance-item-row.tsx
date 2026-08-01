@@ -165,9 +165,7 @@ export function MaintenanceItemRow({ item, defaultOpen = false }: { item: Mainte
 
           <DocumentContextPanel
             documents={documents}
-            onAdd={async (input) => {
-              await createDocument({ ...input, relatedMaintenanceItemId: item.id });
-            }}
+            onAdd={(input) => createDocument({ ...input, relatedMaintenanceItemId: item.id })}
           />
 
           <div className="flex justify-end gap-3">

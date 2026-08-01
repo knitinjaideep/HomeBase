@@ -1,53 +1,55 @@
+"use client";
+
 import Link from "next/link";
+import { useMaintenanceItems, useRepairProjects } from "@/lib/hooks";
+import { useJourneySnapshot } from "@/lib/journey/use-snapshot";
+import { overallProgress } from "@/lib/journey/progress";
+import { phaseForStage } from "@/lib/guide/phases";
+import { getMaintenanceUrgency } from "@/lib/maintenance/schedule";
+import { useActiveMode } from "@/lib/workspace/mode-context";
+import { toolkitGroupsForMode } from "@/lib/toolkit/groups";
+import { recommendedNext } from "@/lib/toolkit/recommendations";
+import { Panel, SectionTitle } from "@/components/ui";
+import { ToolkitGroupsGrid } from "@/components/toolkit/groups-grid";
 
-interface Tool {
-  label: string;
-  href: string;
-  description: string;
-}
-
-interface ToolGroup {
-  title: string;
-  tools: Tool[];
-}
-
-const GROUPS: ToolGroup[] = [
-  {
-    title: "Money",
-    tools: [
-      { label: "Financial planner", href: "/finances", description: "Affordability, mortgage math, and saved scenarios." },
-      { label: "Lender quotes", href: "/lenders", description: "Compare rates, fees, and terms side by side." },
-      { label: "Preapprovals", href: "/lenders?tab=approvals", description: "Track each approval from conversation to underwritten." },
-    ],
-  },
-  {
-    title: "Homes",
-    tools: [
-      { label: "Compare homes", href: "/compare", description: "Two to five properties, side by side." },
-      { label: "Town & school research", href: "/journey/town-research", description: "Commute, taxes, and school assignment by town." },
-    ],
-  },
-  {
-    title: "People",
-    tools: [
-      { label: "Buyer's agent", href: "/professionals?role=buyer-agent", description: "Candidates, interviews, and scorecards." },
-      { label: "Attorney", href: "/professionals?role=attorney", description: "Retained for attorney review." },
-      { label: "Inspectors", href: "/professionals?role=home-inspector", description: "General, sewer, oil-tank, and radon." },
-      { label: "All professionals", href: "/professionals", description: "The full team directory." },
-    ],
-  },
-  {
-    title: "Planning",
-    tools: [
-      { label: "Timeline", href: "/timeline?tab=timeline", description: "Everything in date order." },
-      { label: "Checklists", href: "/timeline?tab=checklists", description: "Reusable task lists for any phase." },
-      { label: "Documents", href: "/timeline?tab=documents", description: "What exists, and where it lives." },
-      { label: "Resources", href: "/resources", description: "Curated primary-source reading." },
-    ],
-  },
-];
-
+/**
+ * Mode-aware Toolkit: a curated, grouped link directory (not a flat list —
+ * see lib/toolkit/groups.ts for how tiles are organized per mode) plus a
+ * small deterministic "Recommended next" panel (lib/toolkit/recommendations.ts).
+ * Shared between buyer and homeowner mode — see docs/WORKSPACE_MODE.md for
+ * why /toolkit itself is no longer buyer-only even though most of the
+ * buyer tiles it links to still are.
+ */
 export default function ToolkitPage() {
+  const mode = useActiveMode();
+  const groups = toolkitGroupsForMode(mode);
+
+  const snapshot = useJourneySnapshot();
+  const maintenanceItems = useMaintenanceItems();
+  const repairProjects = useRepairProjects();
+
+  const recommendations =
+    mode === "owning"
+      ? recommendedNext({
+          mode,
+          owner: {
+            hasUrgentMaintenance: (maintenanceItems ?? []).some(
+              (i) => i.status === "active" && ["overdue", "due-soon"].includes(getMaintenanceUrgency(i.dueDate)),
+            ),
+            hasRepairProjects: (repairProjects ?? []).length > 0,
+          },
+        })
+      : recommendedNext({
+          mode,
+          buyer: snapshot
+            ? {
+                currentStagePhaseId: phaseForStage(overallProgress(snapshot).currentStage.id).id,
+                hasApprovals: snapshot.approvals.length > 0,
+                shortlistedPropertyCount: snapshot.properties.filter((p) => p.status === "shortlisted").length,
+              }
+            : undefined,
+        });
+
   return (
     <div>
       <div className="mb-8">
@@ -57,47 +59,25 @@ export default function ToolkitPage() {
         </p>
       </div>
 
-      <div className="space-y-8">
-        {GROUPS.map((group) => (
-          <section key={group.title}>
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-subtle">{group.title}</h2>
-            <div className="divide-y divide-line rounded-xl border border-line bg-surface">
-              {group.tools.map((tool) => (
-                <Link
-                  key={tool.href}
-                  href={tool.href}
-                  className="flex items-center justify-between gap-4 px-4 py-3.5 hover:bg-surface-muted"
-                >
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-ink">{tool.label}</div>
-                    <div className="mt-0.5 text-xs text-ink-subtle">{tool.description}</div>
-                  </div>
-                  <ChevronRight />
-                </Link>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-    </div>
-  );
-}
+      {recommendations.length > 0 && (
+        <Panel className="mb-8 p-4 sm:p-5">
+          <SectionTitle title="Recommended next" className="mb-3" />
+          <div className="flex flex-wrap gap-3">
+            {recommendations.map((r) => (
+              <Link
+                key={r.href}
+                href={r.href}
+                className="flex flex-col rounded-lg border border-line bg-surface px-3.5 py-2.5 hover:bg-surface-muted"
+              >
+                <span className="text-sm font-medium text-ink">{r.label}</span>
+                <span className="text-xs text-ink-subtle">{r.reason}</span>
+              </Link>
+            ))}
+          </div>
+        </Panel>
+      )}
 
-function ChevronRight() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="shrink-0 text-ink-subtle"
-      aria-hidden
-    >
-      <path d="m9 6 6 6-6 6" />
-    </svg>
+      <ToolkitGroupsGrid groups={groups} />
+    </div>
   );
 }

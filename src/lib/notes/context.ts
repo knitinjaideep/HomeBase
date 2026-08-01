@@ -114,6 +114,20 @@ export function resolveNoteContext(note: Note, data: NoteContextData): ResolvedN
         ? { label: project.title, href: `/maintenance?project=${project.id}`, available: true }
         : { label: "Repair or project", href: null, available: false };
     }
+    // The 5 cases below back Toolkit tools built on the generic notes system
+    // rather than as bespoke pages/tables (see lib/toolkit/groups.ts) —
+    // permanently "category only", contextId always null, same shape as the
+    // ownedHome case above.
+    case "homeInventory":
+      return { label: "Home inventory", href: "/homebase", available: true };
+    case "contractorNotes":
+      return { label: "Contractor comparison", href: "/toolkit", available: true };
+    case "annualReview":
+      return { label: "Annual home review", href: "/homebase", available: true };
+    case "seasonalChecklist":
+      return { label: "Seasonal checklist", href: "/maintenance", available: true };
+    case "projectCostWorksheet":
+      return { label: "Project cost worksheet", href: "/maintenance?tab=repairs", available: true };
   }
 }
 

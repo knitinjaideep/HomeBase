@@ -202,6 +202,15 @@ clause re-derives membership from `auth.uid()` server-side; the client's
 claimed `householdId` is never trusted on its own. Frontend filtering is
 not a security boundary here — RLS is.
 
+**Storage** (the `documents` bucket, `supabase/migrations/0024`/`0025`) uses
+the same `is_household_member()` check, but `storage.objects` has no
+`"householdId"` column to key off — instead, objects are addressed as
+`{householdId}/{documentId}/{fileName}` and the RLS policies check
+membership against the first path segment
+(`(storage.foldername(name))[1]`). See "Document file storage" in
+`README.md` for the bucket's size/MIME-type limits and the signed-URL
+access pattern (the bucket is private; there is no public URL).
+
 `bootstrap_household()` and `import_household_backup()` are the only ways
 new households/memberships are created — never a direct client `INSERT` —
 so `households` and `household_members` have no insert/delete grants or
