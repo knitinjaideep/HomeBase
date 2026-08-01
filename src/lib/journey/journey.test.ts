@@ -7,11 +7,12 @@ import {
   householdProfileSchema,
   mortgageApprovalSchema,
   professionalSchema,
+  propertySchema,
   townResearchSchema,
   SINGLETON_ID,
 } from "@/lib/models";
 import { GUIDE_STAGES, ALL_ACTIONS, TOTAL_GUIDE_WEIGHT } from "@/lib/guide";
-import { evaluateCheck } from "./criteria";
+import { evaluateCheck, primaryDeal } from "./criteria";
 import { overallProgress, readinessByArea } from "./progress";
 import { nextActions } from "./next-actions";
 import { personalizedLines } from "./personalization";
@@ -214,6 +215,33 @@ describe("criteria evaluation", () => {
     const s2 = baseSnapshot({ towns: [visited] });
     expect(evaluateCheck("primaryTownUnvisited", s2)).toBe(false);
     expect(evaluateCheck("primaryTownsVisited", s2)).toBe(true);
+  });
+
+  it("keeps a purchased property's deal as the primary one, so the buying journey stays accurate after conversion", () => {
+    const property = propertySchema.parse({
+      id: "prop1",
+      createdAt: TS,
+      updatedAt: TS,
+      address: "12 Maple St",
+      dateAdded: "2026-01-01",
+      schools: {},
+      ratings: {},
+      finance: {},
+      status: "purchased",
+    });
+    const deal = dealSchema.parse({
+      id: "deal1",
+      createdAt: TS,
+      updatedAt: TS,
+      propertyId: "prop1",
+      attorneyReview: { attorneyApproved: true },
+      postClosing: { closingCompleted: true },
+    });
+    const s = baseSnapshot({ properties: [property], deals: [deal] });
+
+    expect(primaryDeal(s)?.property.status).toBe("purchased");
+    expect(evaluateCheck("dealClosed", s)).toBe(true);
+    expect(evaluateCheck("dealAttorneyApproved", s)).toBe(true);
   });
 });
 

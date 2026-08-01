@@ -28,6 +28,7 @@ export const PROPERTY_STATUS_LABELS: Record<PropertyStatus, string> = {
   "offer-submitted": "Offer submitted",
   rejected: "Rejected",
   "under-contract": "Under contract",
+  purchased: "Purchased",
   eliminated: "Eliminated",
   archived: "Archived",
 };
@@ -42,6 +43,7 @@ export const PROPERTY_STATUS_ORDER: PropertyStatus[] = [
   "possible-offer",
   "offer-submitted",
   "under-contract",
+  "purchased",
   "rejected",
   "eliminated",
   "archived",

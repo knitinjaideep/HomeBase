@@ -73,13 +73,15 @@ function attendingTreatmentConfirmed(s: JourneySnapshot): boolean {
   return s.approvals.some((a) => a.attendingContractReviewed && a.kind !== "readiness-conversation");
 }
 
-/** The deal we treat as "the live one" — under contract, else the furthest along. */
+/** The deal we treat as "the live one" — purchased, else under contract, else the furthest along. */
 export function primaryDeal(s: JourneySnapshot): { deal: Deal; property: Property } | undefined {
   const byProperty = new Map(s.properties.map((p) => [p.id, p]));
   const withProps = s.deals
     .map((deal) => ({ deal, property: byProperty.get(deal.propertyId) }))
     .filter((x): x is { deal: Deal; property: Property } => Boolean(x.property));
   if (withProps.length === 0) return undefined;
+  const purchased = withProps.find((x) => x.property.status === "purchased");
+  if (purchased) return purchased;
   const underContract = withProps.find((x) => x.property.status === "under-contract");
   if (underContract) return underContract;
   const submitted = withProps.find((x) => x.property.status === "offer-submitted");

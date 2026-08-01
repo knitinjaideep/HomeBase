@@ -28,6 +28,7 @@ export function PropertyCard({
 }) {
   const showVisitLink = TOURING_STATUSES.includes(property.status);
   const settled = SETTLED_STATUSES.includes(property.status);
+  const purchased = property.status === "purchased";
 
   return (
     <div className="group relative flex items-center gap-4 px-4 py-3.5 hover:bg-surface-muted sm:px-5">
@@ -51,7 +52,11 @@ export function PropertyCard({
       <span
         className={cn(
           "shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium",
-          settled ? "bg-surface-muted text-ink-subtle" : "bg-accent-soft text-accent",
+          purchased
+            ? "bg-positive/12 text-positive"
+            : settled
+              ? "bg-surface-muted text-ink-subtle"
+              : "bg-accent-soft text-accent",
         )}
       >
         {PROPERTY_STATUS_LABELS[property.status]}

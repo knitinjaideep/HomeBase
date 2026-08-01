@@ -13,6 +13,7 @@ export const propertyStatusSchema = z.enum([
   "offer-submitted",
   "rejected",
   "under-contract",
+  "purchased",
   "eliminated",
   "archived",
 ]);

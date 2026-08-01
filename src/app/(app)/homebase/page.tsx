@@ -90,6 +90,14 @@ export default function HomeBasePage() {
         >
           View all maintenance →
         </Link>
+        {home?.sourcePropertyId && (
+          <Link
+            href="/homebase/history"
+            className="rounded-lg border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink hover:bg-surface-muted"
+          >
+            Buying journey →
+          </Link>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
