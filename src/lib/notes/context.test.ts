@@ -99,6 +99,17 @@ describe("resolveNoteContext", () => {
     expect(result).toEqual({ label: "Repair or project", href: "/maintenance", available: true });
   });
 
+  it.each([
+    ["homeInventory", "Home inventory", "/homebase"],
+    ["contractorNotes", "Contractor comparison", "/toolkit"],
+    ["annualReview", "Annual home review", "/homebase"],
+    ["seasonalChecklist", "Seasonal checklist", "/maintenance"],
+    ["projectCostWorksheet", "Project cost worksheet", "/maintenance?tab=repairs"],
+  ] as const)("resolves the %s Toolkit note context as category-only, always available", (contextType, label, href) => {
+    const result = resolveNoteContext(note({ contextType, contextId: null }), emptyData);
+    expect(result).toEqual({ label, href, available: true });
+  });
+
   it("resolves a journey stage from the static guide content", () => {
     const result = resolveNoteContext(note({ contextType: "journeyStage", contextId: "offer-prep" }), emptyData);
     expect(result?.available).toBe(true);

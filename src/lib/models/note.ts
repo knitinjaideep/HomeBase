@@ -8,6 +8,12 @@ import { baseEntitySchema } from "./common";
  * docs/WORKSPACE_MODE.md) — they exist here so a note can already be tagged
  * with the right category, with no `contextId` to point at until those
  * features ship.
+ *
+ * `homeInventory` / `contractorNotes` / `annualReview` / `seasonalChecklist`
+ * / `projectCostWorksheet` are the same "category only, contextId always
+ * null" pattern, permanently — they're Toolkit tools deliberately built on
+ * the existing generic notes system rather than as bespoke pages/tables
+ * (see src/lib/toolkit/groups.ts).
  */
 export const noteContextTypeSchema = z.enum([
   "journeyStage",
@@ -19,6 +25,11 @@ export const noteContextTypeSchema = z.enum([
   "repairProject",
   "document",
   "professional",
+  "homeInventory",
+  "contractorNotes",
+  "annualReview",
+  "seasonalChecklist",
+  "projectCostWorksheet",
 ]);
 export type NoteContextType = z.infer<typeof noteContextTypeSchema>;
 

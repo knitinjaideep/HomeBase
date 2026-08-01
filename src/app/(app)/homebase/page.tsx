@@ -10,11 +10,8 @@ import { MAINTENANCE_URGENCY_LABELS, REPAIR_STATUS_LABELS } from "@/lib/labels";
 import { Panel, SectionTitle, EmptyState } from "@/components/ui";
 import { HomeOverviewCard } from "@/components/home/home-overview-card";
 import { NoteContextPanel } from "@/components/notes/note-context-panel";
-import { DocumentContextPanel } from "@/components/documents/document-context-panel";
+import { DocumentContextPanel, OWNER_DOCUMENT_CATEGORIES } from "@/components/documents/document-context-panel";
 import { cn } from "@/lib/util";
-import type { DocumentCategory } from "@/lib/models";
-
-const OWNER_DOCUMENT_CATEGORIES: DocumentCategory[] = ["warranty", "receipt", "manual", "photo", "home-record"];
 
 const URGENCY_STYLES = {
   overdue: "bg-critical/12 text-critical",
@@ -185,9 +182,7 @@ export default function HomeBasePage() {
           <DocumentContextPanel
             documents={ownerDocuments}
             title="Documents & warranties"
-            onAdd={async (input) => {
-              await createDocument(input);
-            }}
+            onAdd={(input) => createDocument(input)}
           />
         </div>
       </div>

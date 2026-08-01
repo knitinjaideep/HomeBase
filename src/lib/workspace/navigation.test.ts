@@ -15,12 +15,19 @@ describe("getNavigationForMode", () => {
     expect(items).toEqual(["Journey", "Homes", "Notes", "Toolkit"]);
   });
 
-  it("gives homeowners HomeBase/Maintenance/Notes, with no buyer-only surfaces", () => {
+  it("gives homeowners HomeBase/Maintenance/Notes/Toolkit, with no buyer-only surfaces", () => {
     const items = getNavigationForMode("owning").map((i) => i.label);
-    expect(items).toEqual(["HomeBase", "Maintenance", "Notes"]);
-    for (const buyerOnly of ["Journey", "Homes", "Toolkit"]) {
+    expect(items).toEqual(["HomeBase", "Maintenance", "Notes", "Toolkit"]);
+    for (const buyerOnly of ["Journey", "Homes"]) {
       expect(items).not.toContain(buyerOnly);
     }
+  });
+
+  it("both modes share the Toolkit destination (mode-aware groups, see lib/toolkit/groups.ts)", () => {
+    const buyerHrefs = getNavigationForMode("buying").map((i) => i.href);
+    const ownerHrefs = getNavigationForMode("owning").map((i) => i.href);
+    expect(buyerHrefs).toContain("/toolkit");
+    expect(ownerHrefs).toContain("/toolkit");
   });
 
   it("falls back to the buyer shape when mode is unselected (defensive default)", () => {
@@ -63,7 +70,7 @@ describe("isRouteAvailableForMode", () => {
   });
 
   it("keeps buyer-only routes available to buyers", () => {
-    for (const path of ["/journey", "/properties", "/compare", "/finances", "/lenders", "/professionals", "/resources", "/timeline", "/toolkit"]) {
+    for (const path of ["/journey", "/properties", "/compare", "/finances", "/lenders", "/professionals", "/resources", "/timeline"]) {
       expect(isRouteAvailableForMode(path, "buying")).toBe(true);
     }
   });
@@ -74,10 +81,18 @@ describe("isRouteAvailableForMode", () => {
   });
 
   it("keeps shared routes available regardless of mode", () => {
-    for (const path of ["/notes", "/settings", "/paths"]) {
+    for (const path of ["/notes", "/settings", "/paths", "/documents"]) {
       for (const mode of MODES) {
         expect(isRouteAvailableForMode(path, mode)).toBe(true);
       }
+    }
+  });
+
+  it("Toolkit itself is shared, but the buyer-only tools it used to gate stay buyer-only for homeowners", () => {
+    expect(isRouteAvailableForMode("/toolkit", "owning")).toBe(true);
+    expect(isRouteAvailableForMode("/toolkit", "buying")).toBe(true);
+    for (const path of ["/finances", "/lenders", "/professionals", "/compare"]) {
+      expect(isRouteAvailableForMode(path, "owning")).toBe(false);
     }
   });
 
@@ -110,7 +125,7 @@ describe("isNavItemActive", () => {
 
   it("matches a hub item (Toolkit) across all of its prefixes", () => {
     const toolkit = getNavigationForMode("buying").find((i) => i.label === "Toolkit")!;
-    for (const path of ["/toolkit", "/compare", "/finances/scenario-1", "/lenders", "/professionals", "/resources", "/timeline?tab=documents"]) {
+    for (const path of ["/toolkit", "/compare", "/finances/scenario-1", "/lenders", "/professionals", "/resources", "/timeline", "/documents"]) {
       // query strings aren't part of pathname in real usage; strip for this assertion
       expect(isNavItemActive(path.split("?")[0], toolkit)).toBe(true);
     }

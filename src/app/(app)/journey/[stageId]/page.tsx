@@ -255,8 +255,8 @@ function StageView({ stage, s }: { stage: GuideStage; s: JourneySnapshot }) {
                   </li>
                 ))}
               </ul>
-              <Link href="/timeline?tab=documents" className="mt-3 inline-block text-sm text-accent hover:underline">
-                Track these in the document index →
+              <Link href="/documents" className="mt-3 inline-block text-sm text-accent hover:underline">
+                Track these in Documents →
               </Link>
             </GuideSection>
           )}

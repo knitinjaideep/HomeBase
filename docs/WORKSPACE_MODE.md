@@ -166,21 +166,25 @@ rest of the app shows — the one place this is decided, rather than scattering
 mode checks across components:
 
 - **`getNavigationForMode(mode)`** — the primary nav destinations. Buying
-  keeps the pre-existing Journey/Homes/Toolkit nav unchanged, plus a new
-  shared "Notes" item. Owning gets its own destinations: HomeBase (its
-  landing page), Maintenance (a placeholder — see below), and Notes.
+  keeps the pre-existing Journey/Homes/Toolkit nav unchanged, plus a shared
+  "Notes" item. Owning gets HomeBase (its landing page), Maintenance, Notes,
+  and — since the Documents & Toolkit redesign — its own Toolkit item too.
 - **`getDefaultRouteForMode(mode)`** — `/journey` for buying, `/homebase` for
   owning. Used after onboarding/path-switching completes and by the route
   guard's redirect target.
 - **`isRouteAvailableForMode(pathname, mode)`** — true unless `pathname` is
   exclusive to the *other* mode. Buyer-only: `/journey`, `/properties`,
   `/visit`, `/compare`, `/finances`, `/lenders`, `/professionals`,
-  `/resources`, `/timeline`, `/toolkit` (its tools — mortgage math, lender
-  quotes, the buyer's-agent directory — are inherently pre-purchase; making
-  Toolkit reachable from homeowner mode would surface exactly the buyer-only
-  surfaces homeowner mode should hide). Owner-only: `/homebase`,
-  `/maintenance`. Everything else (`/notes`, `/settings`, `/paths`) is shared
-  by omission from both lists.
+  `/resources`, `/timeline`. Owner-only: `/homebase`, `/maintenance`.
+  `/toolkit` and `/documents` are deliberately **not** in either list — they
+  are shared, mode-aware pages (see `src/lib/toolkit/groups.ts` and
+  `src/lib/documents/categories.ts`), each rendering a different set of
+  groups/categories depending on `useActiveMode()`. This reverses Toolkit's
+  original buyer-only design (every *individual* buyer tool it links to —
+  `/finances`, `/lenders`, `/professionals`, `/compare` — stays buyer-only;
+  only the Toolkit hub page itself, and its owner-mode tiles, became
+  reachable from homeowner mode). Everything else (`/notes`, `/settings`,
+  `/paths`) is shared by omission from both lists.
 
 `WorkspaceGate` enforces this: in its `"app"` state (a mode is already
 selected), it checks the current pathname against `isRouteAvailableForMode`

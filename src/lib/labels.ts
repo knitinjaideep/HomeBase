@@ -221,6 +221,10 @@ export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
   manual: "Manual",
   photo: "Photo",
   "home-record": "Home record",
+  "appliances-systems": "Appliances & systems",
+  "repairs-renovations": "Repairs & renovations",
+  "hoa-condo": "HOA / condo",
+  utilities: "Utilities",
 };
 
 export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
@@ -250,6 +254,11 @@ export const NOTE_CONTEXT_TYPE_LABELS: Record<NoteContextType, string> = {
   repairProject: "Repair or project",
   document: "Document",
   professional: "Person / professional",
+  homeInventory: "Home inventory",
+  contractorNotes: "Contractor comparison",
+  annualReview: "Annual home review",
+  seasonalChecklist: "Seasonal checklist",
+  projectCostWorksheet: "Project cost worksheet",
 };
 
 export const NOTE_TYPE_LABELS: Record<NoteType, string> = {

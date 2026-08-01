@@ -522,7 +522,7 @@ const finances: GuideStage = {
   relatedTools: [
     { label: "Financial settings", href: "/settings", description: "Assets, debts, expenses, guardrails." },
     { label: "Financial planner", href: "/finances", description: "Scenario testing with real numbers." },
-    { label: "Document index", href: "/timeline?tab=documents", description: "Track what exists and where it lives." },
+    { label: "Documents", href: "/documents", description: "Track what exists and where it lives." },
   ],
   order: 2,
   version: 1,
@@ -740,7 +740,7 @@ const attending: GuideStage = {
     { label: "Attending transition tracker", href: "/journey/attending", description: "On this page, below." },
     { label: "Lenders", href: "/lenders", description: "Record each lender's written answer." },
     { label: "Financial planner", href: "/finances", description: "Model current vs. attending income." },
-    { label: "Document index", href: "/timeline?tab=documents", description: "Note where the contract is stored." },
+    { label: "Documents", href: "/documents", description: "Note where the contract is stored." },
   ],
   order: 3,
   version: 1,
@@ -1187,7 +1187,7 @@ const preapproval: GuideStage = {
   relatedTools: [
     { label: "Preapprovals", href: "/lenders?tab=approvals", description: "Track each approval level separately." },
     { label: "Financial guardrails", href: "/settings", description: "Our limits, which outrank the lender's." },
-    { label: "Document index", href: "/timeline?tab=documents", description: "Note where the letter is stored." },
+    { label: "Documents", href: "/documents", description: "Note where the letter is stored." },
   ],
   order: 6,
   version: 1,

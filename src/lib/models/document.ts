@@ -2,9 +2,12 @@ import { z } from "zod";
 import { baseEntitySchema, idSchema } from "./common";
 
 /**
- * A document *index* — a record that a document exists and where it lives. The
- * app deliberately stores no files: sensitive paperwork does not belong in
- * browser storage.
+ * A document record — a household record with an optional real file
+ * attached (see `filePath`/lib/documents/storage.ts, backed by a private
+ * Supabase Storage bucket) plus the same index fields the app always had
+ * (`storedLocation` for a physical original, category, notes). The file is
+ * optional: a household can log "the original is in the home safe" without
+ * ever uploading anything.
  */
 
 export const documentCategorySchema = z.enum([
@@ -36,6 +39,13 @@ export const documentCategorySchema = z.enum([
   "manual",
   "photo",
   "home-record",
+  // Owner-mode categories added for the Documents redesign — see
+  // src/lib/documents/categories.ts for how the full list above is grouped
+  // into buyer/owner-facing sections.
+  "appliances-systems",
+  "repairs-renovations",
+  "hoa-condo",
+  "utilities",
 ]);
 export type DocumentCategory = z.infer<typeof documentCategorySchema>;
 
@@ -59,8 +69,16 @@ export const documentRecordSchema = baseEntitySchema.extend({
   /** Owner mode: optionally links a document to one maintenance item or repair project. */
   relatedMaintenanceItemId: idSchema.nullable().default(null),
   relatedRepairProjectId: idSchema.nullable().default(null),
-  /** Where the real file lives — "home safe", "shared drive folder", etc. */
+  /** Where a physical original lives — "home safe", "shared drive folder", etc. Independent of `filePath`. */
   storedLocation: z.string().default(""),
   notes: z.string().default(""),
+  tags: z.array(z.string()).default([]),
+  /** Renewal/expiration date the user entered — e.g. an insurance policy or warranty end date. */
+  expirationDate: z.string().nullable().default(null),
+  /** The uploaded file, if any — see lib/documents/storage.ts. All four travel together. */
+  filePath: z.string().nullable().default(null),
+  fileName: z.string().nullable().default(null),
+  fileSize: z.number().int().nullable().default(null),
+  fileMimeType: z.string().nullable().default(null),
 });
 export type DocumentRecord = z.infer<typeof documentRecordSchema>;

@@ -7,12 +7,11 @@ import { createChecklist } from "@/lib/repo";
 import { JOURNEY_CHECKLIST_CATEGORY_PREFIX } from "@/lib/journey/custom-checklist";
 import { Button, Field, Input, PageHeader, Panel, Select, Toggle } from "@/components/ui";
 import { ChecklistCard } from "@/components/timeline/checklist-card";
-import { DocumentIndex } from "@/components/documents/document-index";
 import { OWNER_LABELS } from "@/lib/labels";
 import type { ChecklistTask, Owner } from "@/lib/models";
 import { cn } from "@/lib/util";
 
-type TimelineTab = "timeline" | "checklists" | "documents";
+type TimelineTab = "timeline" | "checklists";
 
 export default function TimelinePage() {
   const checklists = useChecklists();
@@ -59,14 +58,14 @@ export default function TimelinePage() {
   return (
     <div>
       <PageHeader
-        title="Timeline, checklists & documents"
-        description="Everything in date order, reusable checklists, and a document index."
+        title="Timeline & checklists"
+        description="Everything in date order, and reusable checklists."
       />
 
       {/* Controls */}
       <div className="mb-6 flex flex-wrap items-end gap-3">
         <div className="inline-flex overflow-hidden rounded-lg border border-line">
-          {(["timeline", "checklists", "documents"] as const).map((t) => (
+          {(["timeline", "checklists"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -79,28 +78,22 @@ export default function TimelinePage() {
             </button>
           ))}
         </div>
-        {tab !== "documents" && (
-          <>
-            <Field label="Owner" className="w-40">
-              <Select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
-                <option value="all">Everyone</option>
-                {(Object.keys(OWNER_LABELS) as Owner[]).map((o) => (
-                  <option key={o} value={o}>
-                    {OWNER_LABELS[o]}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <div className="pb-2">
-              <Toggle checked={hideDone} onChange={setHideDone} label="Hide completed" />
-            </div>
-          </>
-        )}
+        <Field label="Owner" className="w-40">
+          <Select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
+            <option value="all">Everyone</option>
+            {(Object.keys(OWNER_LABELS) as Owner[]).map((o) => (
+              <option key={o} value={o}>
+                {OWNER_LABELS[o]}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <div className="pb-2">
+          <Toggle checked={hideDone} onChange={setHideDone} label="Hide completed" />
+        </div>
       </div>
 
-      {tab === "documents" ? (
-        <DocumentIndex />
-      ) : tab === "timeline" ? (
+      {tab === "timeline" ? (
         <div className="grid gap-5">
           {timeline.map((c) => (
             <ChecklistCard

@@ -134,9 +134,7 @@ export function RepairProjectRow({ project, defaultOpen = false }: { project: Re
 
           <DocumentContextPanel
             documents={documents}
-            onAdd={async (input) => {
-              await createDocument({ ...input, relatedRepairProjectId: project.id });
-            }}
+            onAdd={(input) => createDocument({ ...input, relatedRepairProjectId: project.id })}
           />
 
           <div className="flex justify-end">
