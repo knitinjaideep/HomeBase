@@ -1,0 +1,194 @@
+[
+  {
+    "path": "README.md",
+    "bytes": 1298
+  },
+  {
+    "path": "backgrounds/app/app-dark.png",
+    "bytes": 1433576
+  },
+  {
+    "path": "backgrounds/app/app-dark.webp",
+    "bytes": 50154
+  },
+  {
+    "path": "backgrounds/app/app-light.png",
+    "bytes": 1483323
+  },
+  {
+    "path": "backgrounds/app/app-light.webp",
+    "bytes": 52476
+  },
+  {
+    "path": "backgrounds/landing/landing-dark.png",
+    "bytes": 1579554
+  },
+  {
+    "path": "backgrounds/landing/landing-dark.webp",
+    "bytes": 34440
+  },
+  {
+    "path": "backgrounds/landing/landing-light.png",
+    "bytes": 1124887
+  },
+  {
+    "path": "backgrounds/landing/landing-light.webp",
+    "bytes": 25752
+  },
+  {
+    "path": "docs/CLAUDE-CODE-PROMPT.md",
+    "bytes": 8802
+  },
+  {
+    "path": "icons/dark/calendar-check.png",
+    "bytes": 152946
+  },
+  {
+    "path": "icons/dark/calendar.png",
+    "bytes": 157001
+  },
+  {
+    "path": "icons/dark/documents.png",
+    "bytes": 149403
+  },
+  {
+    "path": "icons/dark/file-record.png",
+    "bytes": 143775
+  },
+  {
+    "path": "icons/dark/home-search-settings.png",
+    "bytes": 146472
+  },
+  {
+    "path": "icons/dark/home.png",
+    "bytes": 144590
+  },
+  {
+    "path": "icons/dark/notes.png",
+    "bytes": 139347
+  },
+  {
+    "path": "icons/dark/privacy-shield.png",
+    "bytes": 147853
+  },
+  {
+    "path": "icons/dark/questions.png",
+    "bytes": 151807
+  },
+  {
+    "path": "icons/light/calendar.png",
+    "bytes": 175825
+  },
+  {
+    "path": "icons/light/documents.png",
+    "bytes": 164185
+  },
+  {
+    "path": "icons/light/home-search.png",
+    "bytes": 183573
+  },
+  {
+    "path": "icons/light/home.png",
+    "bytes": 177814
+  },
+  {
+    "path": "icons/light/maintenance-tools.png",
+    "bytes": 189987
+  },
+  {
+    "path": "icons/light/notes.png",
+    "bytes": 170952
+  },
+  {
+    "path": "icons/light/privacy-shield.png",
+    "bytes": 178417
+  },
+  {
+    "path": "icons/light/questions.png",
+    "bytes": 170232
+  },
+  {
+    "path": "illustrations/buyer/buyer-dark.png",
+    "bytes": 2887527
+  },
+  {
+    "path": "illustrations/buyer/buyer-dark.webp",
+    "bytes": 209044
+  },
+  {
+    "path": "illustrations/buyer/buyer-light.png",
+    "bytes": 2358109
+  },
+  {
+    "path": "illustrations/buyer/buyer-light.webp",
+    "bytes": 67682
+  },
+  {
+    "path": "illustrations/homeowner/homeowner-dark.png",
+    "bytes": 2685022
+  },
+  {
+    "path": "illustrations/homeowner/homeowner-dark.webp",
+    "bytes": 144134
+  },
+  {
+    "path": "illustrations/homeowner/homeowner-light.png",
+    "bytes": 2608107
+  },
+  {
+    "path": "illustrations/homeowner/homeowner-light.webp",
+    "bytes": 109192
+  },
+  {
+    "path": "mockups/buyer-dashboard-dark-reference.png",
+    "bytes": 1673404
+  },
+  {
+    "path": "mockups/buyer-dashboard-light-reference.png",
+    "bytes": 1505387
+  },
+  {
+    "path": "mockups/homeowner-dashboard-dark-reference.png",
+    "bytes": 1726662
+  },
+  {
+    "path": "mockups/homeowner-dashboard-light-reference.png",
+    "bytes": 1491128
+  },
+  {
+    "path": "mockups/how-it-works-dark-reference.png",
+    "bytes": 1761133
+  },
+  {
+    "path": "mockups/how-it-works-light-reference.png",
+    "bytes": 1864866
+  },
+  {
+    "path": "mockups/landing-light-dark-reference.png",
+    "bytes": 1908464
+  },
+  {
+    "path": "mockups/landing-scroll-dark-reference.png",
+    "bytes": 1718721
+  },
+  {
+    "path": "mockups/landing-scroll-light-reference.png",
+    "bytes": 1721708
+  },
+  {
+    "path": "mockups/why-homescope-dark-reference.png",
+    "bytes": 1657856
+  },
+  {
+    "path": "mockups/why-homescope-light-reference.png",
+    "bytes": 1765626
+  },
+  {
+    "path": "source-sheets/eight_teal_and_gold_home_icons.png",
+    "bytes": 2264838
+  },
+  {
+    "path": "source-sheets/homescope_feature_icon_collection.png",
+    "bytes": 2168654
+  }
+]
