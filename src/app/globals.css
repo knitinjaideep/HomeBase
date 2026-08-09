@@ -281,6 +281,22 @@ body {
   scrollbar-width: thin;
 }
 
+/* A restrained lift + border illumination for genuinely clickable cards/tiles
+   (not applied to static Panels). The reduced-motion override above already
+   collapses `transition-duration` to ~0, so no separate media query is
+   needed here — the lift itself just won't animate for that preference. */
+.hs-card-interactive {
+  transition-property: transform, box-shadow, border-color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+.hs-card-interactive:hover,
+.hs-card-interactive:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--mode-accent-border);
+  box-shadow: 0 8px 20px -8px rgb(var(--ink) / 0.12), 0 0 0 1px var(--mode-accent-border);
+}
+
 /* Print: hide chrome, show only the report content. */
 @media print {
   .no-print {

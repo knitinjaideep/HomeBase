@@ -13,7 +13,7 @@ export function ToolkitGroupsGrid({ groups }: { groups: ToolkitGroup[] }) {
               <Link
                 key={tool.href}
                 href={tool.href}
-                className="flex flex-col gap-1 rounded-xl border border-line bg-surface px-4 py-3.5 hover:bg-surface-muted"
+                className="hs-card-interactive flex flex-col gap-1 rounded-xl border border-line bg-surface px-4 py-3.5 hover:bg-surface-muted"
               >
                 <span className="text-sm font-medium text-ink">{tool.label}</span>
                 <span className="text-xs text-ink-subtle">{tool.description}</span>
