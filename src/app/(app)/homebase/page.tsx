@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDocuments, useMaintenanceItems, useOwnedHome, useRepairProjects } from "@/lib/hooks";
 import { createDocument } from "@/lib/repo";
 import { getMaintenanceUrgency } from "@/lib/maintenance/schedule";
@@ -9,6 +9,8 @@ import { dateLabel } from "@/lib/format";
 import { MAINTENANCE_URGENCY_LABELS, REPAIR_STATUS_LABELS } from "@/lib/labels";
 import { Panel, SectionTitle, EmptyState } from "@/components/ui";
 import { HomeOverviewCard } from "@/components/home/home-overview-card";
+import { StarterTemplatePicker } from "@/components/maintenance/starter-template-picker";
+import { consumeShowStarterTemplates } from "@/lib/purchase/starter-templates-hint";
 import { NoteContextPanel } from "@/components/notes/note-context-panel";
 import { DocumentContextPanel, OWNER_DOCUMENT_CATEGORIES } from "@/components/documents/document-context-panel";
 import { cn } from "@/lib/util";
@@ -27,6 +29,10 @@ const URGENCY_STYLES = {
  * percentages — every number here is a real count or date.
  */
 export default function HomeBasePage() {
+  const [showTemplates, setShowTemplates] = useState(false);
+  useEffect(() => {
+    if (consumeShowStarterTemplates()) setShowTemplates(true);
+  }, []);
   const home = useOwnedHome();
   const maintenanceItems = useMaintenanceItems();
   const repairProjects = useRepairProjects();
@@ -99,6 +105,15 @@ export default function HomeBasePage() {
           </Link>
         )}
       </div>
+
+      {showTemplates && (
+        <div className="mb-6">
+          <p className="mb-2 text-sm text-ink-muted">
+            Optional: pick a few recurring maintenance tasks to start with. You can always add more later.
+          </p>
+          <StarterTemplatePicker onDone={() => setShowTemplates(false)} />
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
