@@ -6,6 +6,7 @@ import { BottomNav } from "./bottom-nav";
 import { BackupReminder } from "./backup-reminder";
 import { MigrationBanner } from "./migration-banner";
 import { QuickNote } from "./notes/quick-note";
+import { TourAutoLaunch } from "./tour/tour-auto-launch";
 
 /**
  * Frame around every page: navigation, the backup reminder, and a footer
@@ -44,6 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </footer>
       <BottomNav mode={mode} />
       <QuickNote />
+      <TourAutoLaunch />
     </div>
   );
 }

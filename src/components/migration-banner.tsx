@@ -131,7 +131,9 @@ export function MigrationBanner() {
         </div>
         {error && (
           <div className="mx-auto max-w-content px-4 pb-2.5 sm:px-6">
-            <Callout tone="critical">{error}</Callout>
+            <Callout tone="critical" role="alert">
+              {error}
+            </Callout>
           </div>
         )}
       </div>
@@ -158,7 +160,11 @@ export function MigrationBanner() {
                   </li>
                 ))}
               </ul>
-              {error && <Callout tone="critical">{error}</Callout>}
+              {error && (
+                <Callout tone="critical" role="alert">
+                  {error}
+                </Callout>
+              )}
             </div>
           )
         }

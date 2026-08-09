@@ -14,6 +14,7 @@ import { dateLabel, money } from "@/lib/format";
 import { MAINTENANCE_URGENCY_LABELS, PRIORITY_LABELS } from "@/lib/labels";
 import { useToast } from "@/components/toast";
 import { Field, Input, Select, Textarea, Button } from "@/components/ui";
+import { ConfirmDialog } from "@/components/modal";
 import { NoteContextPanel } from "@/components/notes/note-context-panel";
 import { DocumentContextPanel } from "@/components/documents/document-context-panel";
 import { cn } from "@/lib/util";
@@ -29,6 +30,7 @@ const URGENCY_STYLES = {
 export function MaintenanceItemRow({ item, defaultOpen = false }: { item: MaintenanceItem; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const [showComplete, setShowComplete] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const documents = useDocumentsForMaintenanceItem(item.id);
   const { notify } = useToast();
 
@@ -180,13 +182,28 @@ export function MaintenanceItemRow({ item, defaultOpen = false }: { item: Mainte
             )}
             <button
               type="button"
-              onClick={() => {
-                if (confirm(`Delete "${item.title}"? This cannot be undone.`)) void deleteMaintenanceItem(item.id);
-              }}
+              onClick={() => setConfirmDelete(true)}
               className="text-xs text-ink-subtle hover:text-critical"
             >
               Delete
             </button>
+
+            <ConfirmDialog
+              open={confirmDelete}
+              title="Delete this maintenance item?"
+              tone="critical"
+              confirmLabel="Delete permanently"
+              body={
+                <span>
+                  This removes <strong>{item.title}</strong>. This cannot be undone.
+                </span>
+              }
+              onConfirm={() => {
+                setConfirmDelete(false);
+                void deleteMaintenanceItem(item.id);
+              }}
+              onCancel={() => setConfirmDelete(false)}
+            />
           </div>
         </div>
       )}

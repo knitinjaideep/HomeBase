@@ -158,7 +158,7 @@ function PathStep({
       </div>
 
       <div className="mt-8 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
-        <Button onClick={onContinue} disabled={!mode} className="sm:min-w-[10rem]">
+        <Button onClick={onContinue} disabled={!mode} withArrow className="sm:min-w-[10rem]">
           Continue
         </Button>
       </div>

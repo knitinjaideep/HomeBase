@@ -27,19 +27,31 @@ const BUTTON_SIZES: Record<ButtonSize, string> = {
 
 export const Button = forwardRef<
   HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; size?: ButtonSize }
->(function Button({ className, variant = "primary", size = "md", ...props }, ref) {
+  React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    variant?: ButtonVariant;
+    size?: ButtonSize;
+    /** Adds a trailing arrow that nudges forward on hover/focus — for CTAs that move the user to the next step. */
+    withArrow?: boolean;
+  }
+>(function Button({ className, variant = "primary", size = "md", withArrow = false, children, ...props }, ref) {
   return (
     <button
       ref={ref}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        "group inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
         BUTTON_VARIANTS[variant],
         BUTTON_SIZES[size],
         className,
       )}
       {...props}
-    />
+    >
+      {children}
+      {withArrow && (
+        <span aria-hidden className="inline-block transition-transform duration-150 group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5">
+          →
+        </span>
+      )}
+    </button>
   );
 });
 
@@ -266,10 +278,16 @@ export function GuardrailNote({ band, subject }: { band: GuardrailBand; subject:
 
 export function Callout({
   tone = "info",
+  role,
   children,
   className,
 }: {
   tone?: "info" | "caution" | "critical" | "neutral";
+  /** Pass "alert" for a transient message (e.g. a submit error) that should be
+   * announced to screen readers as soon as it appears. Leave unset for a
+   * persistent, already-visible note (e.g. a guardrail warning) that
+   * shouldn't re-announce on every render. */
+  role?: "alert" | "status";
   children: React.ReactNode;
   className?: string;
 }) {
@@ -280,7 +298,7 @@ export function Callout({
     neutral: "border-line bg-surface-muted text-ink-muted",
   };
   return (
-    <div className={cn("rounded-lg border px-3.5 py-2.5 text-sm leading-relaxed", tones[tone], className)}>
+    <div role={role} className={cn("rounded-lg border px-3.5 py-2.5 text-sm leading-relaxed", tones[tone], className)}>
       {children}
     </div>
   );

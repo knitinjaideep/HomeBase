@@ -79,7 +79,11 @@ export function OwnerOnboardingForm({
         />
       </Field>
 
-      {error && <Callout tone="critical">{error}</Callout>}
+      {error && (
+        <Callout tone="critical" role="alert">
+          {error}
+        </Callout>
+      )}
 
       <div className="flex items-center justify-between gap-3 pt-1">
         <Button type="button" variant="ghost" onClick={onBack} disabled={busy}>

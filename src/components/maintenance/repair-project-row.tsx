@@ -7,6 +7,7 @@ import { createDocument } from "@/lib/repo";
 import { dateLabel, money } from "@/lib/format";
 import { PRIORITY_LABELS, REPAIR_STATUS_LABELS } from "@/lib/labels";
 import { Field, Input, Select, Textarea, Button } from "@/components/ui";
+import { ConfirmDialog } from "@/components/modal";
 import { NoteContextPanel } from "@/components/notes/note-context-panel";
 import { DocumentContextPanel } from "@/components/documents/document-context-panel";
 import { cn } from "@/lib/util";
@@ -14,6 +15,7 @@ import type { Priority, RepairProject, RepairStatus } from "@/lib/models";
 
 export function RepairProjectRow({ project, defaultOpen = false }: { project: RepairProject; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const documents = useDocumentsForRepairProject(project.id);
   const isOpenStatus = project.status === "planned" || project.status === "in-progress";
 
@@ -140,13 +142,28 @@ export function RepairProjectRow({ project, defaultOpen = false }: { project: Re
           <div className="flex justify-end">
             <button
               type="button"
-              onClick={() => {
-                if (confirm(`Delete "${project.title}"? This cannot be undone.`)) void deleteRepairProject(project.id);
-              }}
+              onClick={() => setConfirmDelete(true)}
               className="text-xs text-ink-subtle hover:text-critical"
             >
               Delete
             </button>
+
+            <ConfirmDialog
+              open={confirmDelete}
+              title="Delete this repair project?"
+              tone="critical"
+              confirmLabel="Delete permanently"
+              body={
+                <span>
+                  This removes <strong>{project.title}</strong>. This cannot be undone.
+                </span>
+              }
+              onConfirm={() => {
+                setConfirmDelete(false);
+                void deleteRepairProject(project.id);
+              }}
+              onCancel={() => setConfirmDelete(false)}
+            />
           </div>
         </div>
       )}

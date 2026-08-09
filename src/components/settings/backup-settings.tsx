@@ -123,7 +123,7 @@ export function BackupSettings() {
             Choose backup file…
           </Button>
           {importError && (
-            <Callout tone="critical" className="mt-2">
+            <Callout tone="critical" role="alert" className="mt-2">
               {importError}
             </Callout>
           )}

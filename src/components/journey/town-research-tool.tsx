@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { TownDesignation, TownResearch } from "@/lib/models";
 import { createTown, deleteTown, saveTown } from "@/lib/repo";
 import { Button, Field, Input, Select, Textarea, Toggle, Chip, Callout, RatingInput } from "@/components/ui";
+import { ConfirmDialog } from "@/components/modal";
 import { TOWN_DESIGNATION_LABELS } from "@/lib/labels";
 import { cn } from "@/lib/util";
 
@@ -51,6 +52,7 @@ export function TownResearchTool({ towns }: { towns: TownResearch[] }) {
 
 function TownCard({ town }: { town: TownResearch }) {
   const [open, setOpen] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const set = (patch: Partial<TownResearch>) => void saveTown({ ...town, ...patch });
   const canBePrimary = town.visited;
 
@@ -217,16 +219,27 @@ function TownCard({ town }: { town: TownResearch }) {
                 ariaLabel={`Confidence in ${town.name}`}
               />
             </div>
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => {
-                if (confirm(`Remove ${town.name} from town research?`)) void deleteTown(town.id);
-              }}
-            >
+            <Button variant="danger" size="sm" onClick={() => setConfirmRemove(true)}>
               Remove town
             </Button>
           </div>
+
+          <ConfirmDialog
+            open={confirmRemove}
+            title="Remove this town?"
+            tone="critical"
+            confirmLabel="Remove"
+            body={
+              <span>
+                This removes <strong>{town.name}</strong> from town research.
+              </span>
+            }
+            onConfirm={() => {
+              setConfirmRemove(false);
+              void deleteTown(town.id);
+            }}
+            onCancel={() => setConfirmRemove(false)}
+          />
         </div>
       )}
     </div>

@@ -31,3 +31,7 @@ next-env.d.ts
 /coverage
 .vercel
 .env*
+
+# Playwright
+/playwright-report/
+/test-results/

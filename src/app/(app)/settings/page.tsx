@@ -8,6 +8,7 @@ import { FinancialSettings } from "@/components/settings/financial-settings";
 import { PreferencesSettings } from "@/components/settings/preferences-settings";
 import { BackupSettings } from "@/components/settings/backup-settings";
 import { PathSettings } from "@/components/settings/path-settings";
+import { TourSettings } from "@/components/settings/tour-settings";
 
 export default function SettingsPage() {
   const household = useHousehold();
@@ -26,6 +27,7 @@ export default function SettingsPage() {
       />
       <div className="space-y-6">
         <PathSettings />
+        <TourSettings />
         <HouseholdMembersSettings />
         <HouseholdSettings profile={household} />
         <FinancialSettings profile={financial} />

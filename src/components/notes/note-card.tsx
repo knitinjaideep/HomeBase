@@ -7,6 +7,7 @@ import { archiveNote, deleteNote, restoreNote, updateNote } from "@/lib/repo";
 import { dateLabel } from "@/lib/format";
 import { NOTE_TYPE_LABELS } from "@/lib/labels";
 import { Panel, Button, Chip } from "@/components/ui";
+import { ConfirmDialog } from "@/components/modal";
 import { cn } from "@/lib/util";
 import type { Note } from "@/lib/models";
 import type { ResolvedNoteContext } from "@/lib/notes/context";
@@ -23,6 +24,7 @@ interface NoteCardProps {
 export function NoteCard({ note, context, compact = false }: NoteCardProps) {
   const { notify } = useToast();
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (editing) {
     return (
@@ -53,7 +55,6 @@ export function NoteCard({ note, context, compact = false }: NoteCardProps) {
   };
 
   const remove = async () => {
-    if (!confirm("Delete this note? This can't be undone.")) return;
     await deleteNote(note.id);
     notify("Note deleted.");
   };
@@ -100,12 +101,25 @@ export function NoteCard({ note, context, compact = false }: NoteCardProps) {
             {note.archived ? "Restore" : "Archive"}
           </Button>
           {!compact && (
-            <Button variant="danger" size="sm" onClick={() => void remove()}>
+            <Button variant="danger" size="sm" onClick={() => setConfirmDelete(true)}>
               Delete
             </Button>
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete this note?"
+        tone="critical"
+        confirmLabel="Delete permanently"
+        body="This can't be undone."
+        onConfirm={() => {
+          setConfirmDelete(false);
+          void remove();
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </Panel>
   );
 }

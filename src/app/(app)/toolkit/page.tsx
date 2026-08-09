@@ -67,7 +67,7 @@ export default function ToolkitPage() {
               <Link
                 key={r.href}
                 href={r.href}
-                className="flex flex-col rounded-lg border border-line bg-surface px-3.5 py-2.5 hover:bg-surface-muted"
+                className="hs-card-interactive flex flex-col rounded-lg border border-line bg-surface px-3.5 py-2.5 hover:bg-surface-muted"
               >
                 <span className="text-sm font-medium text-ink">{r.label}</span>
                 <span className="text-xs text-ink-subtle">{r.reason}</span>

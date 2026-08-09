@@ -19,6 +19,7 @@ import {
   BandPill,
   Callout,
   Chip,
+  EmptyState,
   GuardrailNote,
   Panel,
   RatingDots,
@@ -269,15 +270,31 @@ export default function PropertyDetailPage() {
               Open visit mode →
             </Link>
           </div>
-          <ul className="mt-3 space-y-2 text-sm text-ink-muted">
-            {(visits ?? []).map((v) => (
-              <li key={v.id}>
-                Visited {dateLabel(v.visitDate)}
-                {v.stillWantAfterExcitement ? ` — "${v.stillWantAfterExcitement.slice(0, 60)}"` : ""}
-              </li>
-            ))}
-            {(visits ?? []).length === 0 && <li className="text-ink-subtle">No visits recorded yet.</li>}
-          </ul>
+          {(visits ?? []).length === 0 ? (
+            <div className="mt-3">
+              <EmptyState
+                title="No visits recorded yet"
+                description="Open visit mode to log what you saw, felt, and want to remember."
+                action={
+                  <Link
+                    href={`/visit/${property.id}`}
+                    className="no-print text-sm font-medium text-accent hover:underline"
+                  >
+                    Open visit mode →
+                  </Link>
+                }
+              />
+            </div>
+          ) : (
+            <ul className="mt-3 space-y-2 text-sm text-ink-muted">
+              {(visits ?? []).map((v) => (
+                <li key={v.id}>
+                  Visited {dateLabel(v.visitDate)}
+                  {v.stillWantAfterExcitement ? ` — "${v.stillWantAfterExcitement.slice(0, 60)}"` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
         </Panel>
       )}
 
@@ -399,7 +416,18 @@ export default function PropertyDetailPage() {
             {property.notes ? (
               <p className="whitespace-pre-wrap text-sm text-ink">{property.notes}</p>
             ) : (
-              <p className="text-sm text-ink-subtle">No notes yet. Add some from Edit.</p>
+              <EmptyState
+                title="No notes yet"
+                description="This is the free-text field from the property's Edit form."
+                action={
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="no-print text-sm font-medium text-accent hover:underline"
+                  >
+                    Add from Edit →
+                  </button>
+                }
+              />
             )}
           </Panel>
 

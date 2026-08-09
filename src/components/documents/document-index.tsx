@@ -20,6 +20,7 @@ import type { DocumentCategory, DocumentRecord, DocumentStatus, MaintenanceItem,
 import { DOCUMENT_CATEGORY_LABELS, DOCUMENT_STATUS_LABELS } from "@/lib/labels";
 import { NoteContextPanel } from "@/components/notes/note-context-panel";
 import { Panel, SectionTitle, Button, Field, Input, Textarea, Select, Callout, EmptyState } from "@/components/ui";
+import { ConfirmDialog } from "@/components/modal";
 import { cn } from "@/lib/util";
 
 const STATUS_TONE: Record<DocumentStatus, string> = {
@@ -297,6 +298,7 @@ function DocumentRow({
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const { notify } = useToast();
   const { householdId } = useHouseholdContext();
   const set = (patch: Partial<DocumentRecord>) => void updateDocument(doc.id, patch);
@@ -332,7 +334,6 @@ function DocumentRow({
   };
 
   const remove = async () => {
-    if (!confirm(`Remove "${doc.name}"?`)) return;
     if (doc.filePath) await deleteDocumentFile(doc.filePath);
     await deleteDocument(doc.id);
   };
@@ -511,10 +512,28 @@ function DocumentRow({
           </Field>
 
           <div className="flex justify-end">
-            <Button variant="danger" size="sm" onClick={remove}>
+            <Button variant="danger" size="sm" onClick={() => setConfirmRemove(true)}>
               Remove
             </Button>
           </div>
+
+          <ConfirmDialog
+            open={confirmRemove}
+            title="Remove this document?"
+            tone="critical"
+            confirmLabel="Remove"
+            body={
+              <span>
+                This removes <strong>{doc.name}</strong>
+                {doc.fileName ? " and its attached file" : ""}.
+              </span>
+            }
+            onConfirm={() => {
+              setConfirmRemove(false);
+              void remove();
+            }}
+            onCancel={() => setConfirmRemove(false)}
+          />
 
           <NoteContextPanel contextType="document" contextId={doc.id} title="Notes about this document" limit={3} />
         </div>

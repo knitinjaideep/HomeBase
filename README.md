@@ -129,6 +129,7 @@ npm run lint        # ESLint (via `next lint`)
 npm run typecheck   # tsc --noEmit
 npm test            # Vitest — unit + legacy-persistence integration (run once)
 npm run test:watch  # Vitest in watch mode
+npm run test:e2e    # Playwright — full buyer/homeowner flows against a mocked backend
 ```
 
 **Node version:** the project has no `.nvmrc`/`engines` pin; local development and CI both use **Node 22** (the current Node LTS line, compatible with Next.js 15's `^18.18 || >=20` requirement). If you change this, update `.github/workflows/ci.yml` and check Vercel's Project Settings → Node.js Version stays aligned.
@@ -549,7 +550,21 @@ The distinction between `lib/guide` (content) and `lib/journey` (engines over sa
 
 `npm test` covers the calculation core (mortgage payment, cumulative interest, closing cash, reserves, DTI, guardrail classification, the combined plan evaluation, comparison, lender estimates, the overall score), JSON export/import validation, the legacy local database (seeding idempotency and the export → wipe → import round-trip, plus the migration read path that a real browser upgrade would exercise), and a **journey engine suite** verifying guide-content integrity (18 unique stages, globally-unique action/decision ids, an attending contract weighted far above reading a resource), deterministic `autoCheck` criteria (guardrails, childcare, the attending-timing risk, distinct-lender counting, visit-before-Primary), weighted progress and descriptive readiness, the next-action rules (including the critical walk-away-exceeded warning), and personalization token substitution. It also covers the **property form draft ↔ persisted boundary** (`lib/property-form`: a draft may start with an empty address; `prepareProperty` trims and rejects an empty/whitespace address inline, and only a saved property must satisfy the strict `propertySchema`) and the Homes search filter (`lib/property-search`).
 
-The Supabase-backed read/write layer (`lib/hooks.ts`, `lib/repo.ts`) is not covered by automated tests — there is no CI Supabase instance to run against (see "Suggested future enhancements"). It has been verified manually against a real project.
+The Supabase-backed read/write layer (`lib/hooks.ts`, `lib/repo.ts`) has no unit tests against a real Postgres/RLS instance — there is no CI Supabase instance to run against (see "Suggested future enhancements") — but it is exercised end-to-end by the Playwright suite below, and has been verified manually against a real project.
+
+### End-to-end tests (Playwright)
+
+`npm run test:e2e` drives the app in a real browser through two complete flows — buyer (path selection → Journey → a candidate home → a visit note → a document upload → converting a purchased home into HomeBase) and homeowner (path selection → adding a home → a maintenance item → completing it → a repair note → a receipt upload → the HomeBase dashboard) — see `e2e/buyer-flow.spec.ts` and `e2e/homeowner-flow.spec.ts`.
+
+It runs against `e2e/mock-server.mjs`, a small purpose-built stand-in for Supabase's Auth/REST/Storage APIs — **never a real Supabase project**. That mirrors this repo's CI philosophy (see "GitHub Actions" above: no live backend, ever) and is why the suite isn't wired into `ci.yml` by default; doing so would mean installing a browser in CI, which is a real tradeoff on cost/speed the project owner should decide on explicitly rather than one added silently.
+
+### Known limitations of the e2e suite
+
+- Chromium only, one project, no visual/screenshot assertions.
+- The mock backend supports exactly the query shapes the app's repo/service layer issues today (`select`/`insert`/`upsert`/`update`/`delete` with `eq`/`neq`/`is` filters, `.maybeSingle()`, and the `bootstrap_household`/`create_household` RPCs) — not a general PostgREST emulator, and not a substitute for RLS/migration testing.
+- Runs with a single Playwright worker against one shared mock-server process; each spec resets it first (`POST /__reset`), so specs must stay sequential, not parallel.
+
+Writing the buyer flow's conversion step surfaced a real bug this PR also fixes: converting a candidate home to homeowner mode while still on that (now buyer-only) property page flips the active mode immediately, and `WorkspaceGate` redirects to `/homebase` before the dialog's optional "starter maintenance templates" step could ever be used — a `?startertemplates=1` query param on the redirect target even got raced and stripped by `WorkspaceGate`'s own `router.replace`. `ConvertToHomeownerDialog` now hands off to `/homebase` directly and leaves a one-shot `sessionStorage` hint (`lib/purchase/starter-templates-hint.ts`) for it to pick up on arrival, since a URL param can't survive that race but storage isn't touched by it.
 
 The **preview access gate** (`lib/preview-gate/`) is covered end-to-end at the request level: `gate.test.ts` drives `evaluatePreviewGate` with real `NextRequest` objects (disabled passes everything through; enabled redirects unauthorized page requests and returns the documented JSON shape for `/api/*`; `/preview-access` itself is always reachable; a valid cookie passes, an expired/tampered/wrong-secret cookie doesn't; a missing-secret misconfiguration fails closed with a 503 everywhere except the access page). `token.test.ts`, `return-to.test.ts`, `rate-limit.test.ts`, `crypto.test.ts`, and `config.test.ts` cover the signed-cookie round trip and rotation/version invalidation, open-redirect rejection, the rate limiter's window/reset behavior, the timing-safe comparison, and env-var validation, respectively. The page and server action themselves (`app/preview-access/`) aren't unit tested, for the same reason as the Supabase layer above — they depend on Next's request-scoped `cookies()`/`headers()`/`redirect()`, which need a running Next server rather than a bare Vitest environment.
 
@@ -563,6 +578,7 @@ The **preview access gate** (`lib/preview-gate/`) is covered end-to-end at the r
 - No calendar integration (by design). A document's file can be a photo (e.g. a nameplate or a home-inventory shot), but there's no dedicated photo gallery/album feature.
 - The buyer owner labels default to "Me" / "Partner"; names shown in Settings are editable, but the task-owner labels use the defaults.
 - No true offline mode: actions need a network connection. Only property visit notes keep a temporary local draft against a bad connection.
+- The product tour, empty-state, and visual-polish work in the buyer/homeowner revamp was verified via unit tests, the Playwright e2e flows above, and manual code review — not a live cross-device/viewport pass (no browser automation with real device emulation was available in that session). Spot-check the tour and updated empty states on a real phone and at 125–150% desktop zoom before considering that work fully verified.
 
 ## Suggested future enhancements (not part of the MVP, not implemented)
 
