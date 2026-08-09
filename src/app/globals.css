@@ -16,6 +16,8 @@
   --positive: 47 122 84;
   --caution: 158 106 24;
   --critical: 168 68 51;
+  --secondary: 158 106 24;
+  --secondary-soft: 250 240 219;
 
   /* Mode accent — buyer (mint/teal, same hue as --accent) is the default;
      [data-mode="owning"] below overrides to amber/gold (same hue as
@@ -48,6 +50,8 @@
   --positive: 110 190 140;
   --caution: 214 170 96;
   --critical: 224 138 120;
+  --secondary: 214 170 96;
+  --secondary-soft: 54 45 26;
 
   --mode-accent: 122 189 178;
   --mode-accent-muted: 32 48 46;
@@ -167,6 +171,32 @@ html {
       transform: scale(1);
     }
   }
+}
+
+/* Global authenticated-app background: a faint, fixed decorative layer behind
+   every (app) page. A CSS background (not next/image) so only the active
+   theme's image is ever fetched, matching the .landing-page pattern above.
+   Both source images are dark, moody night scenes with teal/gold light-trail
+   accents (not neutral textures), so the light-mode tint must be much
+   stronger than dark's to avoid a jarring dark wash under the ivory canvas —
+   confirmed by inspecting the actual images, not assumed. */
+.hs-app-backdrop {
+  --app-backdrop-image: url("/images/homescope/backgrounds/app/app-light.webp");
+  --app-backdrop-tint: rgb(var(--canvas) / 0.94);
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  pointer-events: none;
+  background-image: linear-gradient(var(--app-backdrop-tint), var(--app-backdrop-tint)),
+    var(--app-backdrop-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.dark .hs-app-backdrop {
+  --app-backdrop-image: url("/images/homescope/backgrounds/app/app-dark.webp");
+  --app-backdrop-tint: rgb(var(--canvas) / 0.78);
 }
 
 body {
