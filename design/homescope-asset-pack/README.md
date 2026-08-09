@@ -1,3 +1,14 @@
+> **Note (Phase 1 of the visual redesign):** This pack was split up during Phase 1.
+> The WebP images the app actually references, plus the icon PNGs (no WebP
+> alternative exists for those), now live under `public/images/homescope/`.
+> This directory (`design/homescope-asset-pack/`) keeps everything else for
+> reference only — the PNG masters behind those WebPs, the mockups, the
+> source icon sheets, and the implementation-prompt doc below. The rest of
+> this README describes the pack's original, pre-split layout and is now
+> partly out of date (e.g. "Recommended copy destination" and the "Lucide
+> icon system" mention — this app has no Lucide, every icon is a hand-rolled
+> inline SVG); a full rewrite is out of scope for this fix.
+
 # HomeScope Visual Asset Pack
 
 This package contains theme-specific backgrounds, buyer and homeowner illustrations,

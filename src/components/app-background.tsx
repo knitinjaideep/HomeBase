@@ -1,3 +1,3 @@
 export function AppBackground() {
-  return <div aria-hidden="true" className="hs-app-backdrop" />;
+  return <div aria-hidden="true" className="hs-app-backdrop no-print" />;
 }

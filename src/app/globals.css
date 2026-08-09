@@ -16,6 +16,13 @@
   --positive: 47 122 84;
   --caution: 158 106 24;
   --critical: 168 68 51;
+
+  /* --secondary intentionally duplicates --caution's RGB values, and
+     --secondary-soft duplicates the owning-mode (amber/gold) variant of
+     --mode-accent-muted. This is a deliberate separate token reserved for
+     decorative/secondary-accent use in later phases, kept apart from
+     --caution on purpose so a decorative choice never shares a variable
+     with a semantic warning color that might change meaning later. */
   --secondary: 158 106 24;
   --secondary-soft: 250 240 219;
 
@@ -199,6 +206,13 @@ html {
   --app-backdrop-tint: rgb(var(--canvas) / 0.78);
 }
 
+/* Fragile on purpose, noted here: .hs-app-backdrop is only visible because
+   <html> has no background of its own, so body's background-color below
+   propagates up to paint the canvas and lets the z-index: -10 backdrop show
+   through underneath — if any later phase gives <html> a background, body's
+   background stops propagating and instead paints as a normal box background
+   above the backdrop layer, silently hiding it with no error and no failing
+   test. */
 body {
   background-color: rgb(var(--canvas));
   color: rgb(var(--ink));
