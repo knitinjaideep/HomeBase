@@ -1,6 +1,7 @@
 "use client";
 
 import { useActiveMode } from "@/lib/workspace/mode-context";
+import { AppBackground } from "./app-background";
 import { AppNav } from "./app-nav";
 import { BottomNav } from "./bottom-nav";
 import { BackupReminder } from "./backup-reminder";
@@ -28,6 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       className="flex min-h-screen flex-col"
       style={{ paddingLeft: "env(safe-area-inset-left)", paddingRight: "env(safe-area-inset-right)" }}
     >
+      <AppBackground />
       <AppNav mode={mode} />
       <MigrationBanner />
       <BackupReminder />
