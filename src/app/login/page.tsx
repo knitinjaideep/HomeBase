@@ -127,7 +127,11 @@ export default function LoginPage() {
                 placeholder="you@example.com"
               />
             </Field>
-            {error && <Callout tone="critical">{error}</Callout>}
+            {error && (
+              <Callout tone="critical" role="alert">
+                {error}
+              </Callout>
+            )}
             <Button type="submit" disabled={busy || !email.trim()} className="w-full">
               {busy ? "Sending…" : "Send sign-in code"}
             </Button>
@@ -158,7 +162,11 @@ export default function LoginPage() {
                 placeholder="123456"
               />
             </Field>
-            {error && <Callout tone="critical">{error}</Callout>}
+            {error && (
+              <Callout tone="critical" role="alert">
+                {error}
+              </Callout>
+            )}
             {resent && !error && <Callout tone="info">A new code is on its way.</Callout>}
             <Button type="submit" disabled={busy || !code.trim()} className="w-full">
               {busy ? "Verifying…" : "Verify and sign in"}

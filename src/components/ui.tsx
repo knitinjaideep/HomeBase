@@ -266,10 +266,16 @@ export function GuardrailNote({ band, subject }: { band: GuardrailBand; subject:
 
 export function Callout({
   tone = "info",
+  role,
   children,
   className,
 }: {
   tone?: "info" | "caution" | "critical" | "neutral";
+  /** Pass "alert" for a transient message (e.g. a submit error) that should be
+   * announced to screen readers as soon as it appears. Leave unset for a
+   * persistent, already-visible note (e.g. a guardrail warning) that
+   * shouldn't re-announce on every render. */
+  role?: "alert" | "status";
   children: React.ReactNode;
   className?: string;
 }) {

@@ -89,7 +89,11 @@ export function HouseholdOnboarding({
                 placeholder="K7FD-M9QX-4R2P"
               />
             </Field>
-            {error && <Callout tone="critical">{error}</Callout>}
+            {error && (
+              <Callout tone="critical" role="alert">
+                {error}
+              </Callout>
+            )}
             <Button type="submit" disabled={busy || !code.trim()} className="w-full">
               {busy ? "Joining…" : "Join household"}
             </Button>
@@ -114,7 +118,11 @@ export function HouseholdOnboarding({
                 placeholder="Our Household"
               />
             </Field>
-            {error && <Callout tone="critical">{error}</Callout>}
+            {error && (
+              <Callout tone="critical" role="alert">
+                {error}
+              </Callout>
+            )}
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? "Creating…" : "Create household"}
             </Button>

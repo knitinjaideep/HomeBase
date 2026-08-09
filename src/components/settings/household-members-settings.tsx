@@ -124,7 +124,7 @@ export function HouseholdMembersSettings() {
       )}
 
       {error && (
-        <Callout tone="critical" className="mt-3">
+        <Callout tone="critical" role="alert" className="mt-3">
           {error}
         </Callout>
       )}

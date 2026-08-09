@@ -25,6 +25,7 @@ import {
 } from "@/components/ui";
 import { dateLabel } from "@/lib/format";
 import { useToast } from "@/components/toast";
+import { ConfirmDialog } from "@/components/modal";
 import { cn } from "@/lib/util";
 
 const PUBLISHER_LABELS: Record<ResourcePublisherKind, string> = {
@@ -122,6 +123,7 @@ export default function ResourcesPage() {
 
 function ResourceCard({ resource: r }: { resource: Resource }) {
   const [open, setOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { notify } = useToast();
   const set = (patch: Partial<Resource>) => void updateResource(r.id, patch);
 
@@ -246,19 +248,30 @@ function ResourceCard({ resource: r }: { resource: Resource }) {
               >
                 Report outdated
               </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => {
-                  if (confirm(`Delete "${r.title}"?`)) void deleteResource(r.id);
-                }}
-              >
+              <Button variant="danger" size="sm" onClick={() => setConfirmDelete(true)}>
                 Delete
               </Button>
             </div>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete this resource?"
+        tone="critical"
+        confirmLabel="Delete permanently"
+        body={
+          <span>
+            This removes <strong>{r.title}</strong> from your library.
+          </span>
+        }
+        onConfirm={() => {
+          setConfirmDelete(false);
+          void deleteResource(r.id);
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </Panel>
   );
 }

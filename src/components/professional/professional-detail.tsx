@@ -21,6 +21,7 @@ import {
   RatingInput,
 } from "@/components/ui";
 import { PROFESSIONAL_ROLE_LABELS, SELECTION_STATUS_LABELS } from "@/lib/labels";
+import { ConfirmDialog } from "@/components/modal";
 import { cn } from "@/lib/util";
 import { useSaveStatus, type SaveStatus } from "@/lib/data/save-status";
 import { SaveIndicator } from "@/components/save-indicator";
@@ -32,6 +33,7 @@ const TAB_BASE = "px-3 py-1.5 text-sm font-medium rounded-md transition-colors";
 export function ProfessionalDetail({ professional }: { professional: Professional }) {
   const isAgent = professional.role === "buyer-agent";
   const [tab, setTab] = useState<"contact" | "verify" | "interview" | "scorecard">("contact");
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const saveStatus = useSaveStatus();
   const set = (patch: Partial<Professional>) =>
     void saveStatus.run(() => updateProfessional(professional.id, patch));
@@ -69,15 +71,26 @@ export function ProfessionalDetail({ professional }: { professional: Professiona
       </div>
 
       <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
-        <Button
-          variant="danger"
-          size="sm"
-          onClick={() => {
-            if (confirm(`Remove ${professional.name}?`)) void deleteProfessional(professional.id);
-          }}
-        >
+        <Button variant="danger" size="sm" onClick={() => setConfirmRemove(true)}>
           Remove
         </Button>
+
+        <ConfirmDialog
+          open={confirmRemove}
+          title="Remove this professional?"
+          tone="critical"
+          confirmLabel="Remove"
+          body={
+            <span>
+              This removes <strong>{professional.name}</strong> from your list.
+            </span>
+          }
+          onConfirm={() => {
+            setConfirmRemove(false);
+            void deleteProfessional(professional.id);
+          }}
+          onCancel={() => setConfirmRemove(false)}
+        />
         <div className="flex items-center gap-2 text-xs text-ink-subtle">
           {saveStatus.status === "idle" ? (
             "Changes save automatically."

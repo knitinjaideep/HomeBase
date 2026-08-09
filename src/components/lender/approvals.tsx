@@ -6,6 +6,7 @@ import { createApproval, deleteApproval, updateApproval } from "@/lib/repo";
 import type { ApprovalKind, MortgageApproval } from "@/lib/models";
 import { APPROVAL_KIND_HINTS, APPROVAL_KIND_LABELS } from "@/lib/labels";
 import { Panel, Button, Field, Input, Select, Textarea, Callout, EmptyState, Toggle } from "@/components/ui";
+import { ConfirmDialog } from "@/components/modal";
 import { money, percent, dateLabel } from "@/lib/format";
 import { cn } from "@/lib/util";
 
@@ -64,6 +65,7 @@ export function ApprovalsTab() {
 
 function ApprovalCard({ approval: a }: { approval: MortgageApproval }) {
   const [open, setOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const set = (patch: Partial<MortgageApproval>) => void updateApproval(a.id, patch);
 
   const reviews: [keyof MortgageApproval, string][] = [
@@ -197,18 +199,29 @@ function ApprovalCard({ approval: a }: { approval: MortgageApproval }) {
           </Field>
 
           <div className="flex justify-end">
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => {
-                if (confirm(`Delete the ${APPROVAL_KIND_LABELS[a.kind]} from ${a.lender}?`)) void deleteApproval(a.id);
-              }}
-            >
+            <Button variant="danger" size="sm" onClick={() => setConfirmDelete(true)}>
               Delete
             </Button>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete this approval?"
+        tone="critical"
+        confirmLabel="Delete permanently"
+        body={
+          <span>
+            This removes the {APPROVAL_KIND_LABELS[a.kind]} from <strong>{a.lender}</strong>.
+          </span>
+        }
+        onConfirm={() => {
+          setConfirmDelete(false);
+          void deleteApproval(a.id);
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </Panel>
   );
 }

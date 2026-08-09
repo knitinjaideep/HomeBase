@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/util";
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 interface OverlayProps {
   open: boolean;
@@ -29,10 +32,34 @@ export function Overlay({
   variant = "modal",
   size = "lg",
 }: OverlayProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
+
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const panel = panelRef.current;
+    const firstFocusable = panel?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+    (firstFocusable ?? panel)?.focus();
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key === "Tab" && panel) {
+        const focusables = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     document.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
@@ -40,6 +67,7 @@ export function Overlay({
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
+      previouslyFocused?.focus();
     };
   }, [open, onClose]);
 
@@ -50,11 +78,16 @@ export function Overlay({
       <button
         aria-label="Close"
         onClick={onClose}
+        tabIndex={-1}
         className="animate-fade-in absolute inset-0 h-full w-full cursor-default bg-ink/30 backdrop-blur-[1px]"
       />
       {variant === "drawer" ? (
         <div className="ml-auto flex h-full w-full max-w-xl">
-          <div className="animate-slide-in-right relative flex h-full w-full flex-col overflow-hidden border-l border-line bg-surface shadow-2xl">
+          <div
+            ref={panelRef}
+            tabIndex={-1}
+            className="animate-slide-in-right relative flex h-full w-full flex-col overflow-hidden border-l border-line bg-surface shadow-2xl"
+          >
             {title && <OverlayHeader title={title} onClose={onClose} />}
             <div className="hs-scroll flex-1 overflow-y-auto">{children}</div>
           </div>
@@ -62,6 +95,8 @@ export function Overlay({
       ) : (
         <div className="relative m-auto flex max-h-[92vh] w-full flex-col px-4 py-6">
           <div
+            ref={panelRef}
+            tabIndex={-1}
             className={cn(
               "animate-scale-in mx-auto flex max-h-[88vh] w-full flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-2xl",
               SIZES[size],
