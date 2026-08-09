@@ -286,7 +286,7 @@ export function Callout({
     neutral: "border-line bg-surface-muted text-ink-muted",
   };
   return (
-    <div className={cn("rounded-lg border px-3.5 py-2.5 text-sm leading-relaxed", tones[tone], className)}>
+    <div role={role} className={cn("rounded-lg border px-3.5 py-2.5 text-sm leading-relaxed", tones[tone], className)}>
       {children}
     </div>
   );

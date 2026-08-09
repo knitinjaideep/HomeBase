@@ -130,7 +130,7 @@ export default function HomeBasePage() {
                     <li key={item.id}>
                       <Link
                         href={`/maintenance?item=${item.id}`}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2 hover:bg-surface-muted"
+                        className="hs-card-interactive flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2 hover:bg-surface-muted"
                       >
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium text-ink">{item.title}</div>
@@ -170,7 +170,7 @@ export default function HomeBasePage() {
                   <li key={project.id}>
                     <Link
                       href={`/maintenance?project=${project.id}`}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2 hover:bg-surface-muted"
+                      className="hs-card-interactive flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2 hover:bg-surface-muted"
                     >
                       <span className="truncate text-sm font-medium text-ink">{project.title}</span>
                       <span className="shrink-0 rounded-full bg-surface-muted px-2 py-0.5 text-[11px] font-medium text-ink-muted">
