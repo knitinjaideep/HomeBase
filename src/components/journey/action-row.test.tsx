@@ -18,7 +18,8 @@ describe("ActionRow", () => {
     );
     expect(html).toContain("Start here");
     // Detail-area-only content proves it rendered open by default.
-    expect(html).toContain("Attachment reference");
+    expect(html).toContain("Choice area");
+    expect(html).toContain("Notes");
   });
 
   it("stays collapsed with no chip when not emphasized", () => {
@@ -26,7 +27,7 @@ describe("ActionRow", () => {
       <ActionRow action={action} stageId="strategy" state={undefined} />,
     );
     expect(html).not.toContain("Start here");
-    expect(html).not.toContain("Attachment reference");
+    expect(html).not.toContain("Choice area");
   });
 
   it("shows the quick-skip affordance only while not started", () => {
