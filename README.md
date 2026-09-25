@@ -474,6 +474,8 @@ Defaults used when a property leaves a field blank: property taxes fall to the e
 ```
 .github/
   workflows/ci.yml          # "HomeScope CI" — lint · typecheck · test · build; never deploys
+design/
+  homescope-asset-pack/      # reference-only material (PNG masters, mockups, source sheets) split out of public/ during the redesign; see its README
 docs/
   SUPABASE_SETUP.md          # deep dive: migrations, RLS/grants model, auth flow, troubleshooting
 supabase/

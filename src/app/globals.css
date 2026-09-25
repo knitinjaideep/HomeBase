@@ -17,6 +17,15 @@
   --caution: 158 106 24;
   --critical: 168 68 51;
 
+  /* --secondary intentionally duplicates --caution's RGB values, and
+     --secondary-soft duplicates the owning-mode (amber/gold) variant of
+     --mode-accent-muted. This is a deliberate separate token reserved for
+     decorative/secondary-accent use in later phases, kept apart from
+     --caution on purpose so a decorative choice never shares a variable
+     with a semantic warning color that might change meaning later. */
+  --secondary: 158 106 24;
+  --secondary-soft: 250 240 219;
+
   /* Mode accent — buyer (mint/teal, same hue as --accent) is the default;
      [data-mode="owning"] below overrides to amber/gold (same hue as
      --caution). Set once on AppShell's root via data-mode so nav highlights
@@ -48,6 +57,8 @@
   --positive: 110 190 140;
   --caution: 214 170 96;
   --critical: 224 138 120;
+  --secondary: 214 170 96;
+  --secondary-soft: 54 45 26;
 
   --mode-accent: 122 189 178;
   --mode-accent-muted: 32 48 46;
@@ -169,6 +180,39 @@ html {
   }
 }
 
+/* Global authenticated-app background: a faint, fixed decorative layer behind
+   every (app) page. A CSS background (not next/image) so only the active
+   theme's image is ever fetched, matching the .landing-page pattern above.
+   Both source images are dark, moody night scenes with teal/gold light-trail
+   accents (not neutral textures), so the light-mode tint must be much
+   stronger than dark's to avoid a jarring dark wash under the ivory canvas —
+   confirmed by inspecting the actual images, not assumed. */
+.hs-app-backdrop {
+  --app-backdrop-image: url("/images/homescope/backgrounds/app/app-light.webp");
+  --app-backdrop-tint: rgb(var(--canvas) / 0.94);
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  pointer-events: none;
+  background-image: linear-gradient(var(--app-backdrop-tint), var(--app-backdrop-tint)),
+    var(--app-backdrop-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.dark .hs-app-backdrop {
+  --app-backdrop-image: url("/images/homescope/backgrounds/app/app-dark.webp");
+  --app-backdrop-tint: rgb(var(--canvas) / 0.78);
+}
+
+/* Fragile on purpose, noted here: .hs-app-backdrop is only visible because
+   <html> has no background of its own, so body's background-color below
+   propagates up to paint the canvas and lets the z-index: -10 backdrop show
+   through underneath — if any later phase gives <html> a background, body's
+   background stops propagating and instead paints as a normal box background
+   above the backdrop layer, silently hiding it with no error and no failing
+   test. */
 body {
   background-color: rgb(var(--canvas));
   color: rgb(var(--ink));

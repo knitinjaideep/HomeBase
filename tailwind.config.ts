@@ -21,12 +21,15 @@ const config: Config = {
         positive: "rgb(var(--positive) / <alpha-value>)",
         caution: "rgb(var(--caution) / <alpha-value>)",
         critical: "rgb(var(--critical) / <alpha-value>)",
+        secondary: "rgb(var(--secondary) / <alpha-value>)",
+        "secondary-soft": "rgb(var(--secondary-soft) / <alpha-value>)",
       },
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       maxWidth: {
         content: "72rem",
+        "content-wide": "82.5rem",
       },
       borderRadius: {
         xl: "0.75rem",
