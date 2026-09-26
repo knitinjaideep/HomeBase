@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { HOME_TYPE_IDS } from "./home-preferences";
 
 /**
  * Structured answers that belong to a single activity (stored in
@@ -22,9 +23,27 @@ export const commuteResponsesSchema = z.object({
 });
 export type CommuteResponses = z.infer<typeof commuteResponsesSchema>;
 
+const presetIds = z.array(z.string().max(40)).max(30);
+const customItems = z.array(z.string().trim().min(1).max(60)).max(20);
+
+/** Home preferences: what is not stored on `homePreferences` itself. See `home-preferences.ts`. */
+export const homePreferencesResponsesSchema = z.object({
+  homeTypes: z.array(z.enum(HOME_TYPE_IDS)).max(HOME_TYPE_IDS.length).optional(),
+  homeTypeOther: z.string().trim().max(60).optional(),
+  mustHave: presetIds.optional(),
+  mustHaveCustom: customItems.optional(),
+  wouldLove: presetIds.optional(),
+  wouldLoveCustom: customItems.optional(),
+  avoid: presetIds.optional(),
+  avoidCustom: customItems.optional(),
+  extraNotes: z.string().max(4000).optional(),
+});
+export type HomePreferencesResponses = z.infer<typeof homePreferencesResponsesSchema>;
+
 /** Registry: activity id → schema. Add a line here for each new structured activity that needs one. */
 export const ACTIVITY_RESPONSE_SCHEMAS = {
   commute: commuteResponsesSchema,
+  "home-preferences": homePreferencesResponsesSchema,
 } as const;
 
 export type ActivityResponseId = keyof typeof ACTIVITY_RESPONSE_SCHEMAS;

@@ -1,5 +1,24 @@
 import { monthLabel } from "@/lib/format";
 import type { JourneySnapshot } from "./snapshot";
+import { readActivityResponses } from "./activity-responses";
+import { HOME_TYPES, MUST_HAVE_PRESETS, labelsFor } from "./home-preferences";
+
+/** What the household has recorded in the structured Home preferences form. */
+function homePreferenceResponses(s: JourneySnapshot) {
+  return readActivityResponses("home-preferences", s.stageStates.find((x) => x.id === "home-preferences")?.responses);
+}
+
+function homeTypeLabels(s: JourneySnapshot): string[] {
+  const r = homePreferenceResponses(s);
+  return HOME_TYPES.filter((t) => r.homeTypes?.includes(t.id)).map((t) =>
+    t.id === "other" && r.homeTypeOther?.trim() ? r.homeTypeOther.trim() : t.label,
+  );
+}
+
+/** "Garage, Backyard, Central AC +2" — the first few, then a count of the rest. */
+function compactList(items: string[], max = 3): string {
+  return items.length <= max ? items.join(", ") : `${items.slice(0, max).join(", ")} +${items.length - max}`;
+}
 
 /**
  * "What we know so far": a few key answers the household has already recorded,
@@ -9,7 +28,7 @@ import type { JourneySnapshot } from "./snapshot";
  * value is simply left out.
  */
 export interface JourneyFact {
-  id: "timeline" | "towns" | "budget" | "ownership" | "bedrooms" | "schools" | "commute";
+  id: "timeline" | "towns" | "homeType" | "mustHaves" | "budget" | "ownership" | "bedrooms" | "schools" | "commute";
   label: string;
   value: string;
   /** Where the household can change or review it. */
@@ -80,6 +99,29 @@ export function journeyFacts(s: JourneySnapshot): JourneyFact[] {
     });
   }
 
+  const types = homeTypeLabels(s);
+  if (types.length > 0) {
+    facts.push({
+      id: "homeType",
+      activityId: "home-preferences",
+      label: "Home type",
+      value: types.join(", "),
+      href: "/journey/home-preferences",
+    });
+  }
+
+  const responses = homePreferenceResponses(s);
+  const mustHaves = labelsFor(MUST_HAVE_PRESETS, responses.mustHave ?? [], responses.mustHaveCustom ?? []);
+  if (mustHaves.length > 0) {
+    facts.push({
+      id: "mustHaves",
+      activityId: "home-preferences",
+      label: "Must-haves",
+      value: compactList(mustHaves),
+      href: "/journey/home-preferences",
+    });
+  }
+
   if (preferences.minBedrooms > 0) {
     facts.push({
       id: "bedrooms",
@@ -140,6 +182,7 @@ export function activitySummaries(s: JourneySnapshot): Record<string, string> {
   set(
     "home-preferences",
     [
+      homeTypeLabels(s).join(" or ") || undefined,
       s.preferences.minBedrooms > 0 ? `${s.preferences.minBedrooms}+ beds` : undefined,
       s.preferences.minBathrooms > 0 ? `${s.preferences.minBathrooms}+ baths` : undefined,
     ]

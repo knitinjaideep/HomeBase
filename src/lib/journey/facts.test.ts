@@ -8,6 +8,7 @@ function snapshot(overrides: {
   financial?: Record<string, unknown>;
   preferences?: Record<string, unknown>;
   towns?: unknown[];
+  stageStates?: unknown[];
 }): JourneySnapshot {
   return {
     household: { idealPurchaseStart: "2027-05", idealPurchaseEnd: "2027-06", minOwnershipYears: 0, ...overrides.household },
@@ -20,6 +21,7 @@ function snapshot(overrides: {
       ...overrides.preferences,
     },
     towns: overrides.towns ?? [],
+    stageStates: overrides.stageStates ?? [],
   } as unknown as JourneySnapshot;
 }
 

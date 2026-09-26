@@ -26,11 +26,14 @@ export function ActivityFormFrame({
   activity,
   s,
   onSave,
+  aside,
   children,
 }: {
   activity: GuideActivity;
   s: JourneySnapshot;
   onSave: () => Promise<void>;
+  /** Optional side panel (e.g. a live preview). Beside the form from `lg` up, below it on smaller screens. */
+  aside?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -65,44 +68,47 @@ export function ActivityFormFrame({
   }
 
   return (
-    <div className="space-y-6">
-      <Panel className="p-4 sm:p-5">
-        <div className="space-y-5">{children}</div>
+    <div className={aside ? "lg:grid lg:grid-cols-[1fr_20rem] lg:items-start lg:gap-8" : "max-w-2xl"}>
+      <div className="space-y-6">
+        <Panel className="p-4 sm:p-5">
+          <div className="space-y-5">{children}</div>
 
-        <details className="mt-5 border-t border-line pt-4">
-          <summary className="cursor-pointer text-sm text-ink-muted hover:text-ink">Owner and due date (optional)</summary>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <Field label="Owner">
-              <Select value={owner} onChange={(e) => setOwner(ownerSchema.parse(e.target.value))}>
-                {ownerSchema.options.map((o) => (
-                  <option key={o} value={o}>
-                    {OWNER_LABELS[o]}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Due date">
-              <Input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
-            </Field>
-          </div>
-        </details>
-      </Panel>
+          <details className="mt-5 border-t border-line pt-4">
+            <summary className="cursor-pointer text-sm text-ink-muted hover:text-ink">Owner and due date (optional)</summary>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Field label="Owner">
+                <Select value={owner} onChange={(e) => setOwner(ownerSchema.parse(e.target.value))}>
+                  {ownerSchema.options.map((o) => (
+                    <option key={o} value={o}>
+                      {OWNER_LABELS[o]}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Due date">
+                <Input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+              </Field>
+            </div>
+          </details>
+        </Panel>
 
-      <NoteContextPanel contextType="journeyStage" contextId={activity.id} title="Notes about this activity" />
+        <NoteContextPanel contextType="journeyStage" contextId={activity.id} title="Notes about this activity" />
 
-      {error && (
-        <p role="alert" className="text-sm text-critical">
-          {error}
-        </p>
-      )}
-      <div className="flex flex-wrap gap-3">
-        <Button variant="secondary" disabled={busy !== null} onClick={() => void save("later")}>
-          {busy === "later" ? "Saving…" : "Save for later"}
-        </Button>
-        <Button disabled={busy !== null} withArrow onClick={() => void save("continue")}>
-          {busy === "continue" ? "Saving…" : "Save and continue"}
-        </Button>
+        {error && (
+          <p role="alert" className="text-sm text-critical">
+            {error}
+          </p>
+        )}
+        <div className="flex flex-wrap gap-3">
+          <Button variant="secondary" disabled={busy !== null} onClick={() => void save("later")}>
+            {busy === "later" ? "Saving…" : "Save for later"}
+          </Button>
+          <Button disabled={busy !== null} withArrow onClick={() => void save("continue")}>
+            {busy === "continue" ? "Saving…" : "Save and continue"}
+          </Button>
+        </div>
       </div>
+    {aside && <aside className="mt-6 lg:sticky lg:top-24 lg:mt-0">{aside}</aside>}
     </div>
   );
 }

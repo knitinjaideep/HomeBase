@@ -8,6 +8,8 @@ import {
   shortlistedProperties,
   type JourneySnapshot,
 } from "./snapshot";
+import { readActivityResponses } from "./activity-responses";
+import { answersFrom, homePreferencesDefined } from "./home-preferences";
 
 /**
  * Deterministic evaluation of every `autoCheck` key referenced by the guide's
@@ -105,6 +107,13 @@ const PREDICATES: Record<string, Predicate> = {
     decisionMade("strategy.why-biggest-compromise", true) ||
     decisionMade("strategy.biggest-compromise", true),
   dealbreakersDocumented: ({ s }) => s.preferences.dealbreakerNotes.trim().length > 0,
+  // Structured home preferences (home type + at least one must-have), or — so
+  // households who finished this activity before it had a form don't regress —
+  // written deal-breakers, the rule this activity used to have.
+  homePreferencesDefined: ({ s }) =>
+    homePreferencesDefined(
+      answersFrom(s.preferences, readActivityResponses("home-preferences", s.stageStates.find((x) => x.id === "home-preferences")?.responses)),
+    ) || s.preferences.dealbreakerNotes.trim().length > 0,
   // The school and commute activities each wrap a single original Strategy
   // task, so their criterion is simply that task being settled.
   schoolRequirementsEstablished: ({ actionDone }) => actionDone("strategy.school-requirements"),

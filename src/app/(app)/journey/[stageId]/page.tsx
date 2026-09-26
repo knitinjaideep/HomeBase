@@ -84,17 +84,30 @@ function StageView({ stage, s }: { stage: GuideActivity; s: JourneySnapshot }) {
   const StructuredForm = ACTIVITY_FORMS[stage.id];
 
   return (
-    <div className="mx-auto max-w-2xl">
-      {/* Breadcrumb */}
-      <div className="mb-4 flex items-center justify-between text-sm">
-        <Link href="/journey" className="text-ink-muted hover:text-accent">
-          ← Journey
-        </Link>
-        <Link href={`/journey/${parentStage.id}`} className="text-ink-subtle hover:text-accent">
-          {parentStage.title}
-        </Link>
-      </div>
+    <div className={StructuredForm ? "mx-auto max-w-5xl" : "mx-auto max-w-2xl"}>
+      {/* Breadcrumb: Journey / Stage / Activity */}
+      <nav aria-label="Breadcrumb" className="mb-4 text-sm text-ink-muted">
+        <ol className="flex flex-wrap items-center gap-1.5">
+          <li>
+            <Link href="/journey" className="hover:text-accent">
+              Journey
+            </Link>
+          </li>
+          <li aria-hidden>/</li>
+          <li>
+            <Link href={`/journey/${parentStage.id}`} className="hover:text-accent">
+              {parentStage.title}
+            </Link>
+          </li>
+          <li aria-hidden>/</li>
+          <li aria-current="page" className="text-ink">
+            {stage.shortTitle}
+          </li>
+        </ol>
+      </nav>
 
+      {/* Structured forms are wider (they have a side panel); the rest stays a readable column. */}
+      <div className={StructuredForm ? "max-w-2xl" : undefined}>
       {/* Header */}
       <div className="mb-5">
         <div className="flex flex-wrap items-center gap-3">
@@ -138,12 +151,15 @@ function StageView({ stage, s }: { stage: GuideActivity; s: JourneySnapshot }) {
         </div>
       )}
 
+      </div>
+
       {StructuredForm && (
         <div className="mb-8">
           <StructuredForm activity={stage} s={s} />
         </div>
       )}
 
+      <div className={StructuredForm ? "max-w-2xl" : undefined}>
       {/* Tasks */}
       <section>
         <h2 className="font-display text-lg text-ink">Tasks</h2>
@@ -239,6 +255,8 @@ function StageView({ stage, s }: { stage: GuideActivity; s: JourneySnapshot }) {
           </ul>
         </nav>
       )}
+
+      </div>
 
       <Overlay open={guideOpen} onClose={() => setGuideOpen(false)} title={`Guide: ${stage.shortTitle}`} variant="drawer">
         <div className="space-y-8 p-5 sm:p-6">

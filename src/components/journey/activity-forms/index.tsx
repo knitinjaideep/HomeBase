@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import type { GuideActivity } from "@/lib/guide";
 import type { JourneySnapshot } from "@/lib/journey/snapshot";
 import { CommuteActivity } from "./commute-activity";
+import { HomePreferencesActivity } from "./home-preferences-activity";
 
 /**
  * Structured, activity-specific forms.
@@ -34,4 +35,5 @@ export interface ActivityFormProps {
 
 export const ACTIVITY_FORMS: Partial<Record<string, ComponentType<ActivityFormProps>>> = {
   commute: CommuteActivity,
+  "home-preferences": HomePreferencesActivity,
 };

@@ -188,7 +188,7 @@ const strategy: GuideStage = {
   ],
   relatedTools: [
     { label: "Household profile", href: "/settings", description: "Names, income, target purchase window." },
-    { label: "Home preferences", href: "/settings", description: "Must-haves, preferences, deal-breakers." },
+    { label: "Home preferences", href: "/settings", description: "Towns, minimums, and written notes." },
     { label: "Financial guardrails", href: "/settings", description: "Price, payment, and reserve limits." },
     { label: "Town research", href: "/journey/town-research", description: "Primary and backup towns." },
     { label: "Financial planner", href: "/finances", description: "Test what a price range really costs." },
@@ -1161,7 +1161,7 @@ const homePreferences: GuideStage = {
   number: 19,
   title: "Define our home preferences",
   shortTitle: "Home preferences",
-  purpose: "Write down what the home must have, what we would love, and what we will never accept — before we fall for a listing.",
+  purpose: "Separate your must-haves from nice-to-haves so you can focus on what matters most.",
   explanation:
     "Separating must-haves from wishes, and deciding our renovation tolerance in advance, is what turns a compromise into a choice instead of a regret.",
   readinessAreas: ["search"],
@@ -1205,10 +1205,10 @@ const homePreferences: GuideStage = {
   resourceSlugs: [],
   mistakes: [],
   completionCriteria: [
-    { id: "home-preferences.c.dealbreakers", label: "Deal-breakers are documented", autoCheck: "dealbreakersDocumented" },
+    { id: "home-preferences.c.defined", label: "Home type and must-haves are defined", autoCheck: "homePreferencesDefined" },
   ],
   relatedTools: [
-    { label: "Home preferences", href: "/settings", description: "Must-haves, preferences, deal-breakers." },
+    { label: "Home preferences", href: "/settings", description: "Towns, minimums, and written notes." },
   ],
   order: 1.1,
   version: 1,
