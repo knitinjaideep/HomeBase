@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { JourneyStage } from "@/lib/guide";
 import { overallProgress, recommendedActivity } from "@/lib/journey/progress";
-import { journeyFacts } from "@/lib/journey/facts";
+import { FACT_ACTIVITY_IDS, activitySummaries, factsForStage, journeyFacts } from "@/lib/journey/facts";
 import type { JourneySnapshot } from "@/lib/journey/snapshot";
 import { JourneyHero } from "@/components/journey/journey-hero";
 import { StageStepper } from "@/components/journey/stage-stepper";
@@ -21,10 +21,15 @@ import { Panel } from "@/components/ui";
 export function JourneyStageView({ stage, s }: { stage: JourneyStage; s: JourneySnapshot }) {
   const progress = useMemo(() => overallProgress(s), [s]);
   const facts = useMemo(() => journeyFacts(s), [s]);
+  const summaries = useMemo(() => activitySummaries(s), [s]);
   const sp = progress.stages.find((x) => x.stage.id === stage.id);
   if (!sp) return null;
 
   const recommended = recommendedActivity(sp);
+  // Only answers recorded in this Stage's activities. Stages whose activities
+  // record no such answers omit the panel rather than show an empty one.
+  const stageFacts = factsForStage(facts, stage.activityIds);
+  const showFacts = stageFacts.length > 0 || FACT_ACTIVITY_IDS.some((id) => stage.activityIds.includes(id));
 
   return (
     <div>
@@ -32,7 +37,7 @@ export function JourneyStageView({ stage, s }: { stage: JourneyStage; s: Journey
         breadcrumb={[{ label: "Journey", href: "/journey" }, { label: stage.title }]}
         title={stage.title}
       >
-        {stage.goal} You can work on these in any order, and come back anytime.
+        Complete these activities to move this stage forward. You can work on them in any order, and come back anytime.
       </JourneyHero>
 
       <div className="rounded-xl border border-line bg-surface px-3 py-4 sm:px-6 sm:py-5">
@@ -48,13 +53,13 @@ export function JourneyStageView({ stage, s }: { stage: JourneyStage; s: Journey
             <h2 className="font-display text-2xl text-ink">{stage.title}</h2>
             <StageProgressLine sp={sp} pct={Math.round(sp.fraction * 100)} />
             <h3 className="mb-3 mt-6 font-display text-base text-ink">Activities in this stage</h3>
-            <ActivityCards activities={sp.activities} recommendedId={recommended?.activity.id} />
+            <ActivityCards activities={sp.activities} recommendedId={recommended?.activity.id} summaries={summaries} />
           </Panel>
         </div>
 
         <aside className="mt-6 space-y-6 lg:sticky lg:top-24 lg:mt-0">
           <StageSummaryCard sp={sp} />
-          <KnownFacts facts={facts} />
+          {showFacts && <KnownFacts facts={stageFacts} />}
           <RecommendedNextCard recommended={recommended} />
         </aside>
       </div>

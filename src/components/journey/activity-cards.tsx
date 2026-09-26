@@ -13,9 +13,12 @@ import { ActivityIcon } from "@/components/journey/activity-icons";
 export function ActivityCards({
   activities,
   recommendedId,
+  summaries = {},
 }: {
   activities: ActivityProgress[];
   recommendedId: string | undefined;
+  /** Recorded answers per activity id; shown only when present. */
+  summaries?: Record<string, string>;
 }) {
   return (
     <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -45,6 +48,9 @@ export function ActivityCards({
                 </span>
               )}
               <p className="mt-1.5 line-clamp-2 text-sm text-ink-muted">{ap.activity.purpose}</p>
+              {summaries[ap.activity.id] && (
+                <p className="mt-2 truncate text-sm font-medium text-ink">{summaries[ap.activity.id]}</p>
+              )}
               <div className="mt-auto pt-4">
                 <div className="flex items-center gap-3">
                   <div

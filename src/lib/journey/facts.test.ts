@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { journeyFacts } from "./facts";
+import { activitySummaries, factsForStage, journeyFacts } from "./facts";
 import type { JourneySnapshot } from "./snapshot";
 
 /** Only the fields `journeyFacts` reads. */
@@ -73,5 +73,26 @@ describe("journeyFacts", () => {
     expect(blank.bedrooms).toBeUndefined();
     expect(blank.schools).toBeUndefined();
     expect(blank.commute).toBeUndefined();
+  });
+});
+
+describe("stage workspace helpers", () => {
+  it("scopes facts to the activities in a stage", () => {
+    const s = snapshot({ preferences: { primaryTowns: ["Princeton"], minBedrooms: 4 } });
+    const ids = factsForStage(journeyFacts(s), ["town-research"]).map((f) => f.id);
+    expect(ids).toEqual(["towns"]);
+    expect(factsForStage(journeyFacts(s), ["preapproval"])).toEqual([]);
+  });
+
+  it("summarises only what an activity has recorded", () => {
+    const s = snapshot({
+      preferences: { primaryTowns: ["Princeton", "Plainsboro"], minBedrooms: 4, minBathrooms: 0, maxCommuteMinutes: 60 },
+    });
+    const out = activitySummaries(s);
+    expect(out["town-research"]).toBe("Princeton, Plainsboro");
+    expect(out["home-preferences"]).toBe("4+ beds");
+    expect(out["commute"]).toBe("≤ 60 min");
+    expect(out["school-priorities"]).toBeUndefined();
+    expect(out["finances"]).toBeUndefined();
   });
 });
