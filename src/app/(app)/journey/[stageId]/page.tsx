@@ -3,9 +3,9 @@
 import { use, useMemo, useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getStage, GUIDE_STAGES } from "@/lib/guide";
+import { getStage, getJourneyStage, stageForActivity } from "@/lib/guide";
 import { useJourneySnapshot } from "@/lib/journey/use-snapshot";
-import { stageProgress } from "@/lib/journey/progress";
+import { activityProgress } from "@/lib/journey/progress";
 import { personalizedLines } from "@/lib/journey/personalization";
 import { evaluateCheck } from "@/lib/journey/criteria";
 import { setStageState } from "@/lib/repo";
@@ -17,6 +17,7 @@ import { QuestionSetView } from "@/components/journey/question-set";
 import { AttendingTracker } from "@/components/journey/attending-tracker";
 import { TownResearchTool } from "@/components/journey/town-research-tool";
 import { StageChecklistPanel } from "@/components/journey/stage-checklist-panel";
+import { JourneyStageView } from "@/components/journey/journey-stage-view";
 import { Overlay } from "@/components/modal";
 import { NoteContextPanel } from "@/components/notes/note-context-panel";
 import { JOURNEY_STATUS_LABELS } from "@/lib/labels";
@@ -26,22 +27,31 @@ import { useChecklists, useTasks } from "@/lib/hooks";
 import { findStageChecklist } from "@/lib/journey/custom-checklist";
 import type { JourneyStatus } from "@/lib/models";
 import type { JourneySnapshot } from "@/lib/journey/snapshot";
-import type { GuideStage } from "@/lib/guide";
+import type { GuideActivity } from "@/lib/guide";
 
+/**
+ * `/journey/<id>` serves two levels of the Journey → Stage → Activity
+ * hierarchy: one of the six broad Stages (e.g. "get-ready"), or a single
+ * activity (e.g. "strategy"). Activity ids are the same ids the guide always
+ * used, so bookmarked links to an old "stage" URL still open that activity.
+ */
 export default function StagePage({ params }: { params: Promise<{ stageId: string }> }) {
   const { stageId } = use(params);
-  const stage = getStage(stageId);
+  const journeyStage = getJourneyStage(stageId);
+  const activity = getStage(stageId);
   const snapshot = useJourneySnapshot();
 
-  if (!stage) notFound();
+  if (!journeyStage && !activity) notFound();
   if (!snapshot) return <div className="text-ink-subtle">Loading…</div>;
 
-  return <StageView stage={stage} s={snapshot} />;
+  if (journeyStage) return <JourneyStageView stage={journeyStage} s={snapshot} />;
+  return <StageView stage={activity!} s={snapshot} />;
 }
 
-function StageView({ stage, s }: { stage: GuideStage; s: JourneySnapshot }) {
+/** One activity: its tasks, decisions, tools, and guide. */
+function StageView({ stage, s }: { stage: GuideActivity; s: JourneySnapshot }) {
   const [guideOpen, setGuideOpen] = useState(false);
-  const progress = useMemo(() => stageProgress(stage, s), [stage, s]);
+  const progress = useMemo(() => activityProgress(stage, s), [stage, s]);
   const personalLines = useMemo(() => personalizedLines(stage, s), [stage, s]);
   const actionStateById = useMemo(() => new Map(s.actions.map((a) => [a.id, a])), [s.actions]);
   const decisionById = useMemo(() => new Map(s.decisions.map((d) => [d.id, d])), [s.decisions]);
@@ -61,9 +71,8 @@ function StageView({ stage, s }: { stage: GuideStage; s: JourneySnapshot }) {
     [tasks, stageChecklist],
   );
 
-  const index = GUIDE_STAGES.findIndex((x) => x.id === stage.id);
-  const prev = index > 0 ? GUIDE_STAGES[index - 1] : undefined;
-  const next = index < GUIDE_STAGES.length - 1 ? GUIDE_STAGES[index + 1] : undefined;
+  const parentStage = stageForActivity(stage.id);
+  const siblings = parentStage.activityIds.filter((id) => id !== stage.id);
 
   const stageResources = s.resources.filter(
     (r) => r.stageIds.includes(stage.id) && r.status !== "archived",
@@ -77,9 +86,9 @@ function StageView({ stage, s }: { stage: GuideStage; s: JourneySnapshot }) {
         <Link href="/journey" className="text-ink-muted hover:text-accent">
           ← Journey
         </Link>
-        <span className="text-ink-subtle">
-          Stage {stage.number} of {GUIDE_STAGES.length}
-        </span>
+        <Link href={`/journey/${parentStage.id}`} className="text-ink-subtle hover:text-accent">
+          {parentStage.title}
+        </Link>
       </div>
 
       {/* Header */}
@@ -194,29 +203,30 @@ function StageView({ stage, s }: { stage: GuideStage; s: JourneySnapshot }) {
         </Button>
       </div>
 
-      {/* Prev / next */}
       <div className="mt-8">
-        <NoteContextPanel contextType="journeyStage" contextId={stage.id} title="Notes about this stage" />
+        <NoteContextPanel contextType="journeyStage" contextId={stage.id} title="Notes about this activity" />
       </div>
 
-      <div className="mt-10 flex items-center justify-between border-t border-line pt-6">
-        {prev ? (
-          <Link href={`/journey/${prev.id}`} className="text-sm text-ink-muted hover:text-accent">
-            ← {prev.number}. {prev.shortTitle}
-          </Link>
-        ) : (
-          <span />
-        )}
-        {next ? (
-          <Link href={`/journey/${next.id}`} className="text-sm font-medium text-accent hover:underline">
-            {next.number}. {next.shortTitle} →
-          </Link>
-        ) : (
-          <Link href="/journey" className="text-sm font-medium text-accent hover:underline">
-            Back to Journey →
-          </Link>
-        )}
-      </div>
+      {/* Sibling activities: any of them can be worked on at any time. */}
+      {siblings.length > 0 && (
+        <nav aria-label={`Other activities in ${parentStage.title}`} className="mt-10 border-t border-line pt-6">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+            Also in {parentStage.title}
+          </div>
+          <ul className="flex flex-wrap gap-2">
+            {siblings.map((id) => (
+              <li key={id}>
+                <Link
+                  href={`/journey/${id}`}
+                  className="inline-flex min-h-[2.5rem] items-center rounded-lg border border-line bg-surface px-3 text-sm text-ink hover:border-accent/50 hover:text-accent"
+                >
+                  {getStage(id)?.shortTitle}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
 
       <Overlay open={guideOpen} onClose={() => setGuideOpen(false)} title={`Guide: ${stage.shortTitle}`} variant="drawer">
         <div className="space-y-8 p-5 sm:p-6">

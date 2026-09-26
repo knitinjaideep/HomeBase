@@ -3,14 +3,14 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useJourneySnapshot } from "@/lib/journey/use-snapshot";
-import { overallProgress, phaseProgress, readinessByArea, stageProgress } from "@/lib/journey/progress";
+import { overallProgress, readinessByArea } from "@/lib/journey/progress";
 import { nextActions } from "@/lib/journey/next-actions";
-import { GUIDE_STAGES } from "@/lib/guide";
 import { monthLabel } from "@/lib/format";
+import { SETTLED_STATUSES } from "@/lib/models";
 import { Callout, Panel, SectionTitle } from "@/components/ui";
 import { StatusPill, ProgressBar } from "@/components/journey/journey-ui";
-import { PhasePipeline } from "@/components/journey/phase-pipeline";
-import { NoteContextPanel } from "@/components/notes/note-context-panel";
+import { StagePipeline } from "@/components/journey/stage-pipeline";
+import { ActivityList } from "@/components/journey/activity-list";
 import type { JourneySnapshot } from "@/lib/journey/snapshot";
 
 export default function JourneyOverviewPage() {
@@ -25,19 +25,19 @@ export default function JourneyOverviewPage() {
 
 function JourneyOverview({ s }: { s: JourneySnapshot }) {
   const progress = useMemo(() => overallProgress(s), [s]);
-  const phases = useMemo(() => phaseProgress(progress), [progress]);
-  const current = progress.currentStage;
-  const currentDetail = progress.stages.find((sp) => sp.stage.id === current.id)!;
-
-  const currentIndex = GUIDE_STAGES.findIndex((st) => st.id === current.id);
-  const comingNext = GUIDE_STAGES.slice(currentIndex + 1, currentIndex + 3);
-  const completedStages = progress.stages.filter((sp) => sp.status === "completed");
 
   const blocker = useMemo(() => nextActions(s).find((r) => r.level === "critical"), [s]);
-  const readiness = useMemo(() => readinessByArea(progress.stages), [progress.stages]);
+  const readiness = useMemo(() => readinessByArea(progress.activities), [progress.activities]);
 
-  const primaryLabel = currentDetail.status === "not-started" ? "Start this step" : "Continue";
-  const dueLabel = current.suggestedWindow ? monthLabel(current.suggestedWindow.end) : null;
+  // Everything underway right now, across every Stage. Activities run in
+  // parallel, so this is a list, not a single "current" step.
+  const underway = useMemo(
+    () =>
+      progress.activities.filter(
+        (ap) => !SETTLED_STATUSES.includes(ap.status) && ap.status !== "not-started",
+      ),
+    [progress.activities],
+  );
 
   return (
     <div>
@@ -54,7 +54,7 @@ function JourneyOverview({ s }: { s: JourneySnapshot }) {
       <div className="lg:grid lg:grid-cols-[1fr_20rem] lg:items-start lg:gap-8">
         <div>
           <div className="rounded-xl border border-line bg-surface px-4 py-6 sm:px-6">
-            <PhasePipeline phases={phases} currentStageTitle={current.shortTitle} />
+            <StagePipeline stages={progress.stages} />
           </div>
 
           {blocker && (
@@ -73,107 +73,55 @@ function JourneyOverview({ s }: { s: JourneySnapshot }) {
             </div>
           )}
 
-          <section className="relative mt-8">
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-subtle">Up next</div>
-            <div
-              className="pointer-events-none absolute inset-0 -z-10 rounded-2xl"
-              style={{ background: "radial-gradient(120% 140% at 0% 0%, var(--mode-accent-glow), transparent 65%)" }}
-              aria-hidden
-            />
-            <Panel className="border-[color:var(--mode-accent-border)] p-6 sm:p-8">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h2 className="font-display text-2xl text-ink sm:text-3xl">{current.title}</h2>
-                <StatusPill status={currentDetail.status} />
-              </div>
-              <p className="mt-1.5 max-w-xl text-sm text-ink-muted">{current.purpose}</p>
-              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-                <Link
-                  href={`/journey/${current.id}`}
-                  className="inline-flex min-h-[2.5rem] items-center rounded-lg bg-accent px-4 text-sm font-medium text-white hover:opacity-90"
-                >
-                  {primaryLabel}
-                </Link>
-                {dueLabel && <span className="text-xs text-ink-subtle">Due by {dueLabel}</span>}
-              </div>
-            </Panel>
+          <section className="mt-8" aria-labelledby="underway-heading">
+            <div id="underway-heading" className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+              In progress
+            </div>
+            {underway.length > 0 ? (
+              <Panel className="overflow-hidden p-0">
+                <ActivityList activities={underway} />
+              </Panel>
+            ) : (
+              <Panel className="p-4 text-sm text-ink-muted">
+                Nothing started yet. Activities don&rsquo;t have to happen in order — open any one below to begin.
+              </Panel>
+            )}
           </section>
 
-          <div className="mt-8">
-            <NoteContextPanel contextType="journeyStage" contextId={current.id} title="Notes about this stage" />
-          </div>
-
-          {comingNext.length > 0 && (
-            <section className="mt-8">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-subtle">Coming next</div>
-              <div className="divide-y divide-line rounded-xl border border-line bg-surface">
-                {comingNext.map((stage) => (
-                  <Link
-                    key={stage.id}
-                    href={`/journey/${stage.id}`}
-                    className="flex items-center justify-between gap-3 px-4 py-3 text-sm text-ink hover:bg-surface-muted"
-                  >
-                    {stage.shortTitle}
-                    <ChevronRight />
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {completedStages.length > 0 && (
-            <details className="group mt-8">
-              <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-ink">
-                <ChevronRight className="transition-transform group-open:rotate-90" />
-                Completed · {completedStages.length}
-              </summary>
-              <div className="mt-3 divide-y divide-line rounded-xl border border-line bg-surface">
-                {completedStages.map((sp) => (
-                  <Link
-                    key={sp.stage.id}
-                    href={`/journey/${sp.stage.id}`}
-                    className="flex items-center gap-2.5 px-4 py-3 text-sm text-ink-muted hover:bg-surface-muted hover:text-ink"
-                  >
-                    <span className="text-positive">✓</span>
-                    {sp.stage.shortTitle}
-                  </Link>
-                ))}
-              </div>
-            </details>
-          )}
-
-          <details className="group mt-8">
-            <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-accent hover:underline">
-              View full journey
-            </summary>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {GUIDE_STAGES.map((stage) => {
-                const sp = stageProgress(stage, s);
-                const isCurrent = stage.id === current.id;
-                return (
-                  <Link
-                    key={stage.id}
-                    href={`/journey/${stage.id}`}
-                    className={`group/card rounded-xl border p-4 transition-colors hover:border-accent/50 ${
-                      isCurrent ? "border-accent bg-accent-soft/40" : "border-line bg-surface"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-display text-sm text-ink-subtle">{stage.number}</span>
-                        <span className="font-medium text-ink group-hover/card:text-accent">{stage.shortTitle}</span>
-                      </div>
+          <div className="mt-8 space-y-6">
+            {progress.stages.map((sp) => (
+              <section key={sp.stage.id} aria-labelledby={`stage-${sp.stage.id}`}>
+                <Panel className="overflow-hidden p-0">
+                  <div className="p-4 sm:p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Link href={`/journey/${sp.stage.id}`} className="group flex items-baseline gap-2">
+                        <span className="font-display text-sm text-ink-subtle">{sp.stage.order}</span>
+                        <h2
+                          id={`stage-${sp.stage.id}`}
+                          className="font-display text-lg text-ink group-hover:text-accent sm:text-xl"
+                        >
+                          {sp.stage.title}
+                        </h2>
+                      </Link>
                       <StatusPill status={sp.status} />
                     </div>
-                    <ProgressBar
-                      className="mt-3"
-                      fraction={sp.fraction}
-                      tone={sp.status === "completed" ? "positive" : "accent"}
-                    />
-                  </Link>
-                );
-              })}
-            </div>
-          </details>
+                    <p className="mt-1 text-sm text-ink-muted">{sp.stage.goal}</p>
+                    <div className="mt-3 flex items-center gap-3">
+                      <ProgressBar
+                        className="flex-1"
+                        fraction={sp.fraction}
+                        tone={sp.status === "completed" ? "positive" : "accent"}
+                      />
+                      <span className="shrink-0 text-xs text-ink-subtle">
+                        {sp.activitiesDone} of {sp.activitiesTotal} activities
+                      </span>
+                    </div>
+                  </div>
+                  <ActivityList activities={sp.activities} className="border-t border-line" />
+                </Panel>
+              </section>
+            ))}
+          </div>
         </div>
 
         <aside className="mt-8 lg:sticky lg:top-24 lg:mt-0">
@@ -199,24 +147,5 @@ function JourneyOverview({ s }: { s: JourneySnapshot }) {
         </aside>
       </div>
     </div>
-  );
-}
-
-function ChevronRight({ className }: { className?: string }) {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className ?? "text-ink-subtle"}
-      aria-hidden
-    >
-      <path d="m9 6 6 6-6 6" />
-    </svg>
   );
 }

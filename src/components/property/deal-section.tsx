@@ -20,8 +20,9 @@ import { useSaveStatus } from "@/lib/data/save-status";
 import { SaveIndicator } from "@/components/save-indicator";
 
 /**
- * The per-property deal — journey stages 12–18. Created lazily: a property has
- * no deal until offer preparation begins. The walk-away price is shown
+ * The per-property deal — the journey activities from offer prep through
+ * closing. Created lazily: a property has no deal until offer preparation
+ * begins. The walk-away price is shown
  * prominently and is never raised automatically by the app.
  */
 export function DealSection({

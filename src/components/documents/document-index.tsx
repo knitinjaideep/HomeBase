@@ -470,7 +470,7 @@ function DocumentRow({
                     <option value="">None</option>
                     {GUIDE_STAGES.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.number}. {s.shortTitle}
+                        {s.shortTitle}
                       </option>
                     ))}
                   </Select>

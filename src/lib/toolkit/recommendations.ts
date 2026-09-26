@@ -1,5 +1,5 @@
 import type { ResolvedMode } from "@/lib/workspace/resolver";
-import type { PhaseId } from "@/lib/guide/phases";
+import type { JourneyStageId } from "@/lib/guide/journey-stages";
 
 /**
  * The only two labels a recommendation is ever shown with. Deliberately not
@@ -21,8 +21,12 @@ export interface Recommendation {
 }
 
 export interface BuyerRecommendationInput {
-  /** The phase (see lib/guide/phases.ts) of `overallProgress().currentStage`. */
-  currentStagePhaseId: PhaseId;
+  /**
+   * `overallProgress().focusStage` (see lib/journey/progress.ts) — where the
+   * household's attention is. Only used to pick a suggestion; undefined once
+   * every Journey Stage is complete.
+   */
+  focusStageId: JourneyStageId | undefined;
   /** Whether the household has recorded at least one mortgage approval. */
   hasApprovals: boolean;
   /** Properties with `status === "shortlisted"`. */
@@ -58,7 +62,7 @@ export function recommendedNext(input: RecommendationInput): Recommendation[] {
 function buyerRecommendations(buyer: BuyerRecommendationInput | undefined): Recommendation[] {
   const recommendations: Recommendation[] = [];
 
-  if (buyer?.currentStagePhaseId === "finance") {
+  if (buyer?.focusStageId === "buying-power") {
     recommendations.push(
       buyer.hasApprovals
         ? { label: "Affordability & mortgage planner", href: "/finances", reason: "Recommended for your current stage" }

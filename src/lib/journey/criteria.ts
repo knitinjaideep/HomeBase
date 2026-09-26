@@ -98,13 +98,17 @@ function countTrue(obj: Record<string, unknown>, keys: string[]): number {
 type Predicate = (ctx: PredicateContext) => boolean;
 
 const PREDICATES: Record<string, Predicate> = {
-  // Stage 1 — strategy
+  // Get Ready — strategy and the activities carved out of it
   guardrailsComplete: ({ s }) => guardrailsComplete(s),
   guardrailsIncomplete: ({ s }) => !guardrailsComplete(s),
   bothApprovedStrategyDecisions: ({ decisionMade }) =>
     decisionMade("strategy.why-biggest-compromise", true) ||
     decisionMade("strategy.biggest-compromise", true),
   dealbreakersDocumented: ({ s }) => s.preferences.dealbreakerNotes.trim().length > 0,
+  // The school and commute activities each wrap a single original Strategy
+  // task, so their criterion is simply that task being settled.
+  schoolRequirementsEstablished: ({ actionDone }) => actionDone("strategy.school-requirements"),
+  commuteRequirementsEstablished: ({ actionDone }) => actionDone("strategy.commute-requirements"),
   townStrategyDocumented: ({ s }) =>
     primaryTowns(s).length >= 1 &&
     s.towns.some((t) => t.designation === "backup" || t.designation === "considering"),

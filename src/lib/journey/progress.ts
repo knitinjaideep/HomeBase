@@ -1,10 +1,10 @@
 import {
   GUIDE_STAGES,
-  JOURNEY_PHASES,
+  JOURNEY_STAGES,
   READINESS_AREAS,
   stagesForArea,
-  type GuideStage,
-  type JourneyPhase,
+  type GuideActivity,
+  type JourneyStage,
   type ReadinessArea,
 } from "@/lib/guide";
 import { SETTLED_STATUSES, type JourneyStatus } from "@/lib/models";
@@ -18,8 +18,13 @@ import { actionStatusMap, type JourneySnapshot } from "./snapshot";
  * evaluated deterministically from stored data.
  */
 
-export interface StageProgress {
-  stage: GuideStage;
+/**
+ * Progress for one activity (a guide content unit — historically a "stage").
+ * Activities never block one another: each is derived from its own tasks and
+ * completion criteria.
+ */
+export interface ActivityProgress {
+  activity: GuideActivity;
   status: JourneyStatus;
   /** 0–1, weighted by action weight. */
   fraction: number;
@@ -35,7 +40,7 @@ export interface StageProgress {
   criteriaComplete: boolean;
 }
 
-/** Derive a stage's status from its actions and criteria, unless overridden. */
+/** Derive an activity's status from its actions and criteria, unless overridden. */
 function deriveStatus(
   criteriaComplete: boolean,
   actionsDone: number,
@@ -49,7 +54,7 @@ function deriveStatus(
   return "not-started";
 }
 
-export function stageProgress(stage: GuideStage, s: JourneySnapshot): StageProgress {
+export function activityProgress(stage: GuideActivity, s: JourneySnapshot): ActivityProgress {
   const status = actionStatusMap(s);
   let completedWeight = 0;
   let actionsDone = 0;
@@ -82,7 +87,7 @@ export function stageProgress(stage: GuideStage, s: JourneySnapshot): StageProgr
   const derived = deriveStatus(criteriaComplete, actionsDone, stage.actions.length, anyActive);
 
   return {
-    stage,
+    activity: stage,
     status: override ?? derived,
     fraction: totalWeight > 0 ? Math.min(1, completedWeight / totalWeight) : 0,
     completedWeight,
@@ -96,82 +101,95 @@ export function stageProgress(stage: GuideStage, s: JourneySnapshot): StageProgr
   };
 }
 
-export interface OverallProgress {
-  /** Weighted 0–1 across every stage the household has reached. */
+/** A Stage's status. Derived from its activities; never stored. */
+export type JourneyStageStatus = "not-started" | "in-progress" | "completed";
+
+/**
+ * Progress for one of the Journey's six Stages. Derived entirely from the
+ * activities inside it, which may be in any state at once:
+ *
+ * - `fraction` is settled activities ÷ all activities (3 of 7 → 0.43).
+ * - `not-started` when no activity has begun, `completed` when every activity
+ *   is settled, `in-progress` otherwise.
+ *
+ * "Settled" means completed or not-applicable — the same rule tasks use.
+ */
+export interface JourneyStageProgress {
+  stage: JourneyStage;
+  activities: ActivityProgress[];
+  status: JourneyStageStatus;
+  /** 0–1: settled activities ÷ total activities. */
   fraction: number;
-  /** The current stage: the earliest not-yet-complete stage. */
-  currentStage: GuideStage;
-  /** Stage-by-stage detail, in order. */
-  stages: StageProgress[];
-  completedStages: number;
-  totalStages: number;
+  activitiesDone: number;
+  activitiesTotal: number;
+  /** Activities that have begun but are not settled. */
+  activitiesInProgress: number;
 }
 
-export function overallProgress(s: JourneySnapshot): OverallProgress {
-  const stages = GUIDE_STAGES.map((stage) => stageProgress(stage, s));
-  const totalWeight = stages.reduce((sum, sp) => sum + sp.totalWeight, 0);
-  const completedWeight = stages.reduce((sum, sp) => sum + sp.completedWeight, 0);
-  const completedStages = stages.filter((sp) => sp.status === "completed").length;
+export function journeyStageProgress(stage: JourneyStage, activities: ActivityProgress[]): JourneyStageProgress {
+  const inStage = stage.activityIds
+    .map((id) => activities.find((ap) => ap.activity.id === id))
+    .filter((ap): ap is ActivityProgress => Boolean(ap));
+  const settled = (ap: ActivityProgress) => SETTLED_STATUSES.includes(ap.status);
+  const activitiesDone = inStage.filter(settled).length;
+  const activitiesInProgress = inStage.filter((ap) => !settled(ap) && ap.status !== "not-started").length;
+  const total = inStage.length;
 
-  // The current stage is the first non-property-specific stage that is not yet
-  // complete — or, once an offer is live, the earliest incomplete deal stage.
-  const firstIncomplete =
-    stages.find((sp) => sp.status !== "completed" && sp.status !== "not-applicable") ?? stages[0];
+  const status: JourneyStageStatus =
+    total > 0 && activitiesDone === total
+      ? "completed"
+      : activitiesDone > 0 || activitiesInProgress > 0
+        ? "in-progress"
+        : "not-started";
 
   return {
-    fraction: totalWeight > 0 ? completedWeight / totalWeight : 0,
-    currentStage: firstIncomplete.stage,
-    stages,
-    completedStages,
-    totalStages: stages.length,
+    stage,
+    activities: inStage,
+    status,
+    fraction: total > 0 ? activitiesDone / total : 0,
+    activitiesDone,
+    activitiesTotal: total,
+    activitiesInProgress,
   };
 }
 
-/** A phase's status on the pipeline. "blocked" only fires for the current phase. */
-export type PhaseStatus = "completed" | "current" | "blocked" | "upcoming";
-
-export interface PhaseProgress {
-  phase: JourneyPhase;
-  status: PhaseStatus;
-  /** 0–1, weighted by the phase's own stages. */
+export interface OverallProgress {
+  /** Weighted 0–1 across every activity. */
   fraction: number;
-  stages: StageProgress[];
+  /** The six Stages, in Journey order, each derived from its activities. */
+  stages: JourneyStageProgress[];
+  /** Every activity's progress, in guide order. */
+  activities: ActivityProgress[];
+  completedStages: number;
+  totalStages: number;
+  /**
+   * A hint for "where the household's attention is", used only to pick
+   * recommendations — never to gate or hide anything. It is the earliest Stage
+   * that is not completed and has an activity underway; if nothing is underway,
+   * the earliest Stage that is not completed; undefined once every Stage is
+   * complete.
+   */
+  focusStage: JourneyStage | undefined;
 }
 
-/**
- * Group stage progress into the six pipeline phases. Exactly one phase is
- * "current" — the one containing the overall current stage — unless every
- * phase is complete.
- */
-export function phaseProgress(progress: OverallProgress): PhaseProgress[] {
-  const byId = new Map(progress.stages.map((sp) => [sp.stage.id, sp]));
-  let currentSeen = false;
+export function overallProgress(s: JourneySnapshot): OverallProgress {
+  const activities = GUIDE_STAGES.map((activity) => activityProgress(activity, s));
+  const stages = JOURNEY_STAGES.map((stage) => journeyStageProgress(stage, activities));
+  const totalWeight = activities.reduce((sum, ap) => sum + ap.totalWeight, 0);
+  const completedWeight = activities.reduce((sum, ap) => sum + ap.completedWeight, 0);
+  const completedStages = stages.filter((sp) => sp.status === "completed").length;
 
-  return JOURNEY_PHASES.map((phase) => {
-    const stages = phase.stageIds
-      .map((id) => byId.get(id))
-      .filter((sp): sp is StageProgress => Boolean(sp));
-    const totalWeight = stages.reduce((sum, sp) => sum + sp.totalWeight, 0);
-    const completedWeight = stages.reduce((sum, sp) => sum + sp.completedWeight, 0);
-    const fraction = totalWeight > 0 ? Math.min(1, completedWeight / totalWeight) : 0;
-    const allComplete =
-      stages.length > 0 && stages.every((sp) => SETTLED_STATUSES.includes(sp.status as never));
-    const isCurrentPhase = !allComplete && !currentSeen && stages.some((sp) => sp.stage.id === progress.currentStage.id);
-    if (isCurrentPhase) currentSeen = true;
-    const blocked = isCurrentPhase && stages.some((sp) => sp.status === "blocked");
+  const open = stages.filter((sp) => sp.status !== "completed");
+  const focus = open.find((sp) => sp.status === "in-progress") ?? open[0];
 
-    const status: PhaseStatus = allComplete
-      ? "completed"
-      : blocked
-        ? "blocked"
-        : isCurrentPhase
-          ? "current"
-          : currentSeen
-            ? "upcoming"
-            : "completed";
-
-    return { phase, status, fraction, stages };
-  });
+  return {
+    fraction: totalWeight > 0 ? completedWeight / totalWeight : 0,
+    stages,
+    activities,
+    completedStages,
+    totalStages: stages.length,
+    focusStage: focus?.stage,
+  };
 }
 
 export interface AreaReadiness {
@@ -185,12 +203,12 @@ export interface AreaReadiness {
 }
 
 /** Readiness per area, described in words (never a bare "87% ready"). */
-export function readinessByArea(progressByStage: StageProgress[]): AreaReadiness[] {
-  const byId = new Map(progressByStage.map((sp) => [sp.stage.id, sp]));
+export function readinessByArea(progressByActivity: ActivityProgress[]): AreaReadiness[] {
+  const byId = new Map(progressByActivity.map((ap) => [ap.activity.id, ap]));
 
   return READINESS_AREAS.map(({ id, label, description }) => {
     const stages = stagesForArea(id);
-    const relevant = stages.map((st) => byId.get(st.id)).filter((x): x is StageProgress => Boolean(x));
+    const relevant = stages.map((st) => byId.get(st.id)).filter((x): x is ActivityProgress => Boolean(x));
     const totalWeight = relevant.reduce((sum, sp) => sum + sp.totalWeight, 0);
     const completedWeight = relevant.reduce((sum, sp) => sum + sp.completedWeight, 0);
     const fraction = totalWeight > 0 ? completedWeight / totalWeight : 0;
@@ -220,7 +238,7 @@ export function readinessByArea(progressByStage: StageProgress[]): AreaReadiness
  * Build a descriptive readiness sentence such as
  * "Financial strategy established; childcare estimate still missing."
  */
-function describeArea(label: string, relevant: StageProgress[]): string {
+function describeArea(label: string, relevant: ActivityProgress[]): string {
   const done = relevant.filter((sp) => sp.status === "completed");
   const missing = relevant.flatMap((sp) => sp.missingCriteria);
 

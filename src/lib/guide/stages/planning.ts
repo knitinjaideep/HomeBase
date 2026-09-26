@@ -1,9 +1,10 @@
 import type { GuideStage } from "../types";
 
 /**
- * Stages 1–6: strategy, household finances, the attending-income transition,
- * mortgage literacy, lender interviews, and preapproval. These run before any
- * serious touring.
+ * Activities that run before any serious touring: strategy (and the
+ * home-preferences, school-priorities, and commute activities carved out of
+ * it), household finances, the attending-income transition, mortgage literacy,
+ * lender interviews, and preapproval.
  */
 
 const strategy: GuideStage = {
@@ -71,50 +72,6 @@ const strategy: GuideStage = {
       why: "Inventory in one town can dry up for months. Backups keep us from stretching on price out of impatience.",
       defaultOwner: "both",
       weight: 2,
-    },
-    {
-      id: "strategy.school-requirements",
-      title: "Establish our school requirements",
-      why: "Assigned schools drive both our daily life and resale, and they cannot be verified from a town name.",
-      whatToGather: "The district's assignment lookup, the metric we trust, and what threshold is acceptable.",
-      defaultOwner: "both",
-      weight: 3,
-    },
-    {
-      id: "strategy.commute-requirements",
-      title: "Establish our commute requirements",
-      why: "A commute that only works on paper becomes the thing we resent every weekday morning.",
-      whatToGather: "Realistic door-to-door limits for NYC and Jersey City, including the walk and the parking.",
-      defaultOwner: "both",
-      weight: 3,
-    },
-    {
-      id: "strategy.minimum-requirements",
-      title: "Define our minimum home requirements",
-      why: "Written must-haves are the only defense against a beautiful kitchen distracting us from a missing bedroom.",
-      defaultOwner: "both",
-      weight: 3,
-    },
-    {
-      id: "strategy.preferences",
-      title: "Define our preferences",
-      why: "Separating 'would love' from 'must have' is what makes a compromise a choice instead of a regret.",
-      defaultOwner: "both",
-      weight: 2,
-    },
-    {
-      id: "strategy.dealbreakers",
-      title: "Define our deal-breakers",
-      why: "Deal-breakers written before we fall in love are the ones we actually honor.",
-      defaultOwner: "both",
-      weight: 3,
-    },
-    {
-      id: "strategy.renovation-tolerance",
-      title: "Decide our renovation tolerance",
-      why: "Renovation appetite changes which listings are worth touring and how much cash we must hold back.",
-      defaultOwner: "both",
-      weight: 3,
     },
     {
       id: "strategy.comfortable-range",
@@ -227,7 +184,6 @@ const strategy: GuideStage = {
   completionCriteria: [
     { id: "strategy.c.criteria-approved", label: "Both of us have approved the home criteria", autoCheck: "bothApprovedStrategyDecisions" },
     { id: "strategy.c.guardrails", label: "Financial guardrails are saved", autoCheck: "guardrailsComplete" },
-    { id: "strategy.c.dealbreakers", label: "Deal-breakers are documented", autoCheck: "dealbreakersDocumented" },
     { id: "strategy.c.locations", label: "Primary and backup town strategy is documented", autoCheck: "townStrategyDocumented" },
   ],
   relatedTools: [
@@ -532,7 +488,7 @@ const attending: GuideStage = {
   id: "attending",
   number: 3,
   title: "Prepare for the attending-income transition",
-  shortTitle: "Attending income",
+  shortTitle: "Future income",
   purpose:
     "Make sure the transition from resident to attending physician can be properly considered by a lender.",
   explanation:
@@ -1193,8 +1149,150 @@ const preapproval: GuideStage = {
   version: 1,
 };
 
+/*
+ * Home preferences, School priorities, and Commute used to be tasks inside
+ * "strategy". They are their own activities now so a household can work on
+ * them in parallel with the rest of Get Ready. The task ids below are the
+ * original "strategy.*" ids on purpose — saved progress is keyed by task id,
+ * so nothing a household already recorded moves or resets.
+ */
+const homePreferences: GuideStage = {
+  id: "home-preferences",
+  number: 19,
+  title: "Define our home preferences",
+  shortTitle: "Home preferences",
+  purpose: "Write down what the home must have, what we would love, and what we will never accept — before we fall for a listing.",
+  explanation:
+    "Separating must-haves from wishes, and deciding our renovation tolerance in advance, is what turns a compromise into a choice instead of a regret.",
+  readinessAreas: ["search"],
+  suggestedWindow: { start: "2026-07", end: "2026-10" },
+  personalization: [],
+  actions: [
+    {
+      id: "strategy.minimum-requirements",
+      title: "Define our minimum home requirements",
+      why: "Written must-haves are the only defense against a beautiful kitchen distracting us from a missing bedroom.",
+      defaultOwner: "both",
+      weight: 3,
+    },
+    {
+      id: "strategy.preferences",
+      title: "Define our preferences",
+      why: "Separating 'would love' from 'must have' is what makes a compromise a choice instead of a regret.",
+      defaultOwner: "both",
+      weight: 2,
+    },
+    {
+      id: "strategy.dealbreakers",
+      title: "Define our deal-breakers",
+      why: "Deal-breakers written before we fall in love are the ones we actually honor.",
+      defaultOwner: "both",
+      weight: 3,
+    },
+    {
+      id: "strategy.renovation-tolerance",
+      title: "Decide our renovation tolerance",
+      why: "Renovation appetite changes which listings are worth touring and how much cash we must hold back.",
+      defaultOwner: "both",
+      weight: 3,
+    },
+  ],
+  decisions: [],
+  questionSets: [],
+  documents: [
+    { label: "Written must-haves, preferences, and deal-breakers", category: "identification", note: "Kept in Settings → Home preferences." },
+  ],
+  resourceSlugs: [],
+  mistakes: [],
+  completionCriteria: [
+    { id: "home-preferences.c.dealbreakers", label: "Deal-breakers are documented", autoCheck: "dealbreakersDocumented" },
+  ],
+  relatedTools: [
+    { label: "Home preferences", href: "/settings", description: "Must-haves, preferences, deal-breakers." },
+  ],
+  order: 1.1,
+  version: 1,
+};
+
+const schoolPriorities: GuideStage = {
+  id: "school-priorities",
+  number: 20,
+  title: "Set our school priorities",
+  shortTitle: "School priorities",
+  purpose: "Decide what we need from schools, and how we will verify it for a specific address.",
+  explanation:
+    "Assigned schools drive daily life and resale, and they cannot be verified from a town name alone.",
+  readinessAreas: ["search"],
+  suggestedWindow: { start: "2026-07", end: "2026-10" },
+  personalization: [],
+  actions: [
+    {
+      id: "strategy.school-requirements",
+      title: "Establish our school requirements",
+      why: "Assigned schools drive both our daily life and resale, and they cannot be verified from a town name.",
+      whatToGather: "The district's assignment lookup, the metric we trust, and what threshold is acceptable.",
+      defaultOwner: "both",
+      weight: 3,
+    },
+  ],
+  decisions: [],
+  questionSets: [],
+  documents: [],
+  resourceSlugs: [],
+  mistakes: ["Treating a town's reputation as proof of the assigned school."],
+  completionCriteria: [
+    { id: "school-priorities.c.requirements", label: "School requirements are established", autoCheck: "schoolRequirementsEstablished" },
+  ],
+  relatedTools: [
+    { label: "Town research", href: "/journey/town-research", description: "Verify school assignment town by town." },
+    { label: "Home preferences", href: "/settings", description: "Minimum school rating threshold." },
+  ],
+  order: 1.2,
+  version: 1,
+};
+
+const commute: GuideStage = {
+  id: "commute",
+  number: 21,
+  title: "Set our commute requirements",
+  shortTitle: "Commute",
+  purpose: "Agree on a commute that works in real life, not just on a map.",
+  explanation:
+    "A commute that only works on paper becomes the thing we resent every weekday morning.",
+  readinessAreas: ["search"],
+  suggestedWindow: { start: "2026-07", end: "2026-10" },
+  personalization: [],
+  actions: [
+    {
+      id: "strategy.commute-requirements",
+      title: "Establish our commute requirements",
+      why: "A commute that only works on paper becomes the thing we resent every weekday morning.",
+      whatToGather: "Realistic door-to-door limits for NYC and Jersey City, including the walk and the parking.",
+      defaultOwner: "both",
+      weight: 3,
+    },
+  ],
+  decisions: [],
+  questionSets: [],
+  documents: [],
+  resourceSlugs: [],
+  mistakes: [],
+  completionCriteria: [
+    { id: "commute.c.requirements", label: "Commute requirements are established", autoCheck: "commuteRequirementsEstablished" },
+  ],
+  relatedTools: [
+    { label: "Town research", href: "/journey/town-research", description: "Record the real door-to-door commute per town." },
+    { label: "Home preferences", href: "/settings", description: "Maximum commute time." },
+  ],
+  order: 1.3,
+  version: 1,
+};
+
 export const PLANNING_STAGES: GuideStage[] = [
   strategy,
+  homePreferences,
+  schoolPriorities,
+  commute,
   finances,
   attending,
   mortgageOptions,

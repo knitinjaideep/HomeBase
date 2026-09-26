@@ -5,7 +5,7 @@ describe("recommendedNext — buyer", () => {
   it("recommends the preapproval tracker when in the finance phase with no approval yet", () => {
     const result = recommendedNext({
       mode: "buying",
-      buyer: { currentStagePhaseId: "finance", hasApprovals: false, shortlistedPropertyCount: 0 },
+      buyer: { focusStageId: "buying-power", hasApprovals: false, shortlistedPropertyCount: 0 },
     });
     expect(result[0]).toEqual({
       label: "Preapproval tracker",
@@ -17,7 +17,7 @@ describe("recommendedNext — buyer", () => {
   it("recommends the financial planner when in the finance phase with an approval already recorded", () => {
     const result = recommendedNext({
       mode: "buying",
-      buyer: { currentStagePhaseId: "finance", hasApprovals: true, shortlistedPropertyCount: 0 },
+      buyer: { focusStageId: "buying-power", hasApprovals: true, shortlistedPropertyCount: 0 },
     });
     expect(result[0]).toEqual({
       label: "Affordability & mortgage planner",
@@ -29,7 +29,7 @@ describe("recommendedNext — buyer", () => {
   it("recommends Compare homes once 2+ properties are shortlisted", () => {
     const result = recommendedNext({
       mode: "buying",
-      buyer: { currentStagePhaseId: "search", hasApprovals: false, shortlistedPropertyCount: 2 },
+      buyer: { focusStageId: "find-a-home", hasApprovals: false, shortlistedPropertyCount: 2 },
     });
     expect(result).toContainEqual({ label: "Compare homes", href: "/compare", reason: "Useful next" });
   });
@@ -43,7 +43,7 @@ describe("recommendedNext — buyer", () => {
   it("combines the stage rule and the shortlist rule when both apply", () => {
     const result = recommendedNext({
       mode: "buying",
-      buyer: { currentStagePhaseId: "finance", hasApprovals: false, shortlistedPropertyCount: 3 },
+      buyer: { focusStageId: "buying-power", hasApprovals: false, shortlistedPropertyCount: 3 },
     });
     expect(result.map((r) => r.label)).toEqual(["Preapproval tracker", "Compare homes"]);
   });
@@ -91,7 +91,7 @@ describe("no fabricated usage metrics", () => {
   it("every recommendation across every scenario uses an allowed reason", () => {
     const scenarios = [
       { mode: "buying" as const },
-      { mode: "buying" as const, buyer: { currentStagePhaseId: "finance" as const, hasApprovals: true, shortlistedPropertyCount: 5 } },
+      { mode: "buying" as const, buyer: { focusStageId: "buying-power" as const, hasApprovals: true, shortlistedPropertyCount: 5 } },
       { mode: "owning" as const, owner: { hasUrgentMaintenance: true, hasRepairProjects: true } },
       { mode: "owning" as const },
     ];

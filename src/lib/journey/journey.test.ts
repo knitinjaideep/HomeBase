@@ -11,9 +11,24 @@ import {
   townResearchSchema,
   SINGLETON_ID,
 } from "@/lib/models";
-import { GUIDE_STAGES, ALL_ACTIONS, TOTAL_GUIDE_WEIGHT } from "@/lib/guide";
+import {
+  GUIDE_STAGES,
+  ALL_ACTIONS,
+  TOTAL_GUIDE_WEIGHT,
+  STAGE_IDS,
+  JOURNEY_STAGES,
+  getStage,
+  getJourneyStage,
+  stageForActivity,
+} from "@/lib/guide";
 import { evaluateCheck, primaryDeal } from "./criteria";
-import { overallProgress, readinessByArea } from "./progress";
+import {
+  activityProgress,
+  journeyStageProgress,
+  overallProgress,
+  readinessByArea,
+  type ActivityProgress,
+} from "./progress";
 import { nextActions } from "./next-actions";
 import { personalizedLines } from "./personalization";
 import type { JourneySnapshot } from "./snapshot";
@@ -114,11 +129,12 @@ function baseSnapshot(overrides: Partial<JourneySnapshot> = {}): JourneySnapshot
 }
 
 describe("guide content integrity", () => {
-  it("has 18 stages with unique ids and sequential numbers", () => {
-    expect(GUIDE_STAGES).toHaveLength(18);
-    const ids = new Set(GUIDE_STAGES.map((s) => s.id));
-    expect(ids.size).toBe(18);
-    GUIDE_STAGES.forEach((s, i) => expect(s.number).toBe(i + 1));
+  it("has 21 activities with unique ids, orders, and numbers, matching STAGE_IDS", () => {
+    expect(GUIDE_STAGES).toHaveLength(21);
+    expect(new Set(GUIDE_STAGES.map((s) => s.id)).size).toBe(21);
+    expect(new Set(GUIDE_STAGES.map((s) => s.order)).size).toBe(21);
+    expect(new Set(GUIDE_STAGES.map((s) => s.number)).size).toBe(21);
+    expect([...GUIDE_STAGES.map((s) => s.id)].sort()).toEqual([...STAGE_IDS].sort());
   });
 
   it("has globally unique action and decision ids", () => {
@@ -249,16 +265,16 @@ describe("progress and readiness", () => {
   it("reports low but nonzero-friendly progress on a fresh plan", () => {
     const s = baseSnapshot();
     const progress = overallProgress(s);
-    expect(progress.totalStages).toBe(18);
+    expect(progress.totalStages).toBe(6);
+    expect(progress.activities).toHaveLength(21);
     expect(progress.fraction).toBeGreaterThanOrEqual(0);
     expect(progress.fraction).toBeLessThan(0.5);
-    // Guardrails are set in the seed, so strategy shows some completion.
-    expect(progress.currentStage).toBeDefined();
+    expect(progress.focusStage).toBeDefined();
   });
 
   it("describes readiness in words, not just a percentage", () => {
     const s = baseSnapshot();
-    const areas = readinessByArea(overallProgress(s).stages);
+    const areas = readinessByArea(overallProgress(s).activities);
     expect(areas).toHaveLength(5);
     areas.forEach((a) => {
       expect(a.summary.length).toBeGreaterThan(0);
@@ -267,7 +283,7 @@ describe("progress and readiness", () => {
     });
   });
 
-  it("marks a stage completed when its criteria are all met", () => {
+  it("counts criteria met for an activity from stored data", () => {
     // Complete stage 2 (finances) core checks by satisfying its autoChecks.
     const s = baseSnapshot({
       financial: { ...baseSnapshot().financial, childcareMonthly: 2400 },
@@ -278,8 +294,8 @@ describe("progress and readiness", () => {
         { category: "identification", status: "gathered" } as never,
       ],
     });
-    const financeStage = overallProgress(s).stages.find((sp) => sp.stage.id === "finances")!;
-    expect(financeStage.criteriaMet).toBeGreaterThanOrEqual(4);
+    const financeActivity = overallProgress(s).activities.find((ap) => ap.activity.id === "finances")!;
+    expect(financeActivity.criteriaMet).toBeGreaterThanOrEqual(4);
   });
 });
 
@@ -346,5 +362,173 @@ describe("personalization", () => {
     const strategy = GUIDE_STAGES.find((st) => st.id === "strategy")!;
     const lines = personalizedLines(strategy, s);
     expect(lines.some((l) => l.includes("2027"))).toBe(true);
+  });
+});
+
+// ---- Journey → Stage → Activity -------------------------------------------
+
+/** An action row in a given status, as stored. */
+function actionRow(id: string, status: string): never {
+  return { id, status, stageId: "x", createdAt: TS, updatedAt: TS } as never;
+}
+
+/** Settle every task in an activity so its own status becomes completed/ready. */
+function settleActivity(activityId: string, status = "completed"): never[] {
+  return getStage(activityId)!.actions.map((a) => actionRow(a.id, status));
+}
+
+describe("journey stages", () => {
+  it("has the six broad stages in order", () => {
+    expect(JOURNEY_STAGES.map((st) => st.title)).toEqual([
+      "Get Ready",
+      "Buying Power",
+      "Team & Search Plan",
+      "Find a Home",
+      "Make an Offer",
+      "Close",
+    ]);
+    JOURNEY_STAGES.forEach((st, i) => expect(st.order).toBe(i + 1));
+  });
+
+  it("places every activity in exactly one stage, and nothing unknown", () => {
+    const placed = JOURNEY_STAGES.flatMap((st) => st.activityIds);
+    expect(new Set(placed).size).toBe(placed.length);
+    expect([...placed].sort()).toEqual([...STAGE_IDS].sort());
+    STAGE_IDS.forEach((id) => expect(stageForActivity(id).activityIds).toContain(id));
+  });
+
+  it("maps the requested activities into the requested stages", () => {
+    const stageOf = (id: (typeof STAGE_IDS)[number]) => stageForActivity(id).id;
+    expect(stageOf("strategy")).toBe("get-ready");
+    expect(stageOf("attending")).toBe("get-ready"); // Future income
+    expect(stageOf("town-research")).toBe("get-ready"); // Towns
+    expect(stageOf("home-preferences")).toBe("get-ready");
+    expect(stageOf("school-priorities")).toBe("get-ready");
+    expect(stageOf("commute")).toBe("get-ready");
+    expect(stageOf("preapproval")).toBe("buying-power");
+    expect(stageOf("agent-selection")).toBe("team-search-plan");
+    expect(stageOf("touring")).toBe("find-a-home");
+    expect(stageOf("attorney-review")).toBe("make-an-offer");
+    expect(stageOf("inspections")).toBe("close"); // moved out of the offer stage
+    expect(stageOf("closing")).toBe("close");
+  });
+
+  it("keeps every legacy activity id resolvable and never collides with a stage id", () => {
+    STAGE_IDS.forEach((id) => {
+      expect(getStage(id)).toBeDefined();
+      expect(getJourneyStage(id)).toBeUndefined();
+    });
+    JOURNEY_STAGES.forEach((st) => {
+      expect(getJourneyStage(st.id)).toBe(st);
+      expect(getStage(st.id)).toBeUndefined();
+    });
+    expect(getJourneyStage("nope")).toBeUndefined();
+  });
+
+  it("carved home preferences, school, and commute out of strategy without changing any task id", () => {
+    const moved: Record<string, string[]> = {
+      "home-preferences": [
+        "strategy.minimum-requirements",
+        "strategy.preferences",
+        "strategy.dealbreakers",
+        "strategy.renovation-tolerance",
+      ],
+      "school-priorities": ["strategy.school-requirements"],
+      commute: ["strategy.commute-requirements"],
+    };
+    for (const [activityId, taskIds] of Object.entries(moved)) {
+      expect(getStage(activityId)!.actions.map((a) => a.id)).toEqual(taskIds);
+    }
+    const strategyIds = getStage("strategy")!.actions.map((a) => a.id);
+    Object.values(moved).flat().forEach((id) => expect(strategyIds).not.toContain(id));
+    // Every task is still defined exactly once, so saved progress still lines up.
+    const all = ALL_ACTIONS.map((a) => a.id);
+    expect(new Set(all).size).toBe(all.length);
+    Object.values(moved).flat().forEach((id) => expect(all).toContain(id));
+  });
+
+  it("derives a stage's progress from its activities: 3 of 7 is 43%", () => {
+    const stage = JOURNEY_STAGES.find((st) => st.id === "get-ready")!;
+    const base = baseSnapshot();
+    const activities = stage.activityIds.map((id, i) => ({
+      ...activityProgress(getStage(id)!, base),
+      status: i < 3 ? "completed" : "not-started",
+    })) as ActivityProgress[];
+    const sp = journeyStageProgress(stage, activities);
+    expect(sp.activitiesTotal).toBe(7);
+    expect(sp.activitiesDone).toBe(3);
+    expect(sp.fraction).toBeCloseTo(3 / 7, 5);
+    expect(Math.round(sp.fraction * 100)).toBe(43);
+    expect(sp.status).toBe("in-progress");
+  });
+
+  it("completes the carved-out activities from their own tasks and criteria", () => {
+    const s = baseSnapshot({
+      actions: [
+        ...settleActivity("home-preferences"),
+        ...settleActivity("school-priorities"),
+        ...settleActivity("commute"),
+      ],
+      preferences: { ...baseSnapshot().preferences, dealbreakerNotes: "No busy road." },
+    });
+    const getReady = overallProgress(s).stages.find((sp) => sp.stage.id === "get-ready")!;
+    const done = getReady.activities.filter((ap) => ap.status === "completed").map((ap) => ap.activity.id);
+    expect(done.sort()).toEqual(["commute", "home-preferences", "school-priorities"]);
+    expect(getReady.activitiesDone).toBe(3);
+  });
+
+  it("computes stage status: not started, in progress, completed", () => {
+    const stage = JOURNEY_STAGES.find((st) => st.id === "find-a-home")!;
+    const mk = (statuses: Record<string, ActivityProgress["status"]>) => {
+      const s = baseSnapshot();
+      const activities = stage.activityIds.map((id) => ({
+        ...activityProgress(getStage(id)!, s),
+        status: statuses[id] ?? "not-started",
+      }));
+      return journeyStageProgress(stage, activities as ActivityProgress[]);
+    };
+
+    expect(mk({}).status).toBe("not-started");
+    expect(mk({}).fraction).toBe(0);
+
+    const partial = mk({ touring: "in-progress" });
+    expect(partial.status).toBe("in-progress");
+    expect(partial.activitiesInProgress).toBe(1);
+
+    expect(mk({ touring: "completed" }).status).toBe("in-progress");
+    expect(mk({ touring: "completed" }).fraction).toBe(0.5);
+
+    const all = mk({ "active-search": "completed", touring: "completed" });
+    expect(all.status).toBe("completed");
+    expect(all.fraction).toBe(1);
+
+    // Not-applicable counts as settled, like tasks do.
+    expect(mk({ "active-search": "not-applicable", touring: "completed" }).status).toBe("completed");
+  });
+
+  it("does not require activities to be finished in order", () => {
+    // Work starts in the very last activity with nothing earlier touched.
+    const lastTask = getStage("closing")!.actions[0];
+    const p = overallProgress(baseSnapshot({ actions: [actionRow(lastTask.id, "in-progress")] }));
+    expect(p.stages.find((sp) => sp.stage.id === "close")!.status).toBe("in-progress");
+    expect(p.stages.find((sp) => sp.stage.id === "get-ready")!.activitiesInProgress).toBe(0);
+
+    // Several activities in one stage can be underway at the same time.
+    const parallel = baseSnapshot({
+      actions: [
+        actionRow(getStage("strategy")!.actions[0].id, "in-progress"),
+        actionRow(getStage("finances")!.actions[0].id, "in-progress"),
+        actionRow(getStage("town-research")!.actions[0].id, "in-progress"),
+      ],
+    });
+    const getReady = overallProgress(parallel).stages.find((sp) => sp.stage.id === "get-ready")!;
+    expect(getReady.activitiesInProgress).toBe(3);
+    expect(getReady.status).toBe("in-progress");
+  });
+
+  it("points the focus hint at an in-progress stage, else the earliest open one", () => {
+    expect(overallProgress(baseSnapshot()).focusStage?.id).toBe("get-ready");
+    const s = baseSnapshot({ actions: [actionRow(getStage("preapproval")!.actions[0].id, "in-progress")] });
+    expect(overallProgress(s).focusStage?.id).toBe("buying-power");
   });
 });

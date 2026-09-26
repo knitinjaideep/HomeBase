@@ -16,16 +16,23 @@ Property tracking, financial scenarios, lender quotes, professional contacts, to
 
 ## The guided journey
 
-Eighteen editable stages, from strategy to closing. Each is defined as versioned TypeScript content (`src/lib/guide`), separate from the household's stored progress, so guide wording can be revised without losing state:
+The Journey is organised as **Journey → Stage → Activity**. Six broad **Stages** each contain several **Activities**, and activities inside a Stage can be started, worked on, and finished in any order — several can be underway at once, and nothing blocks anything else. A Stage's progress is always derived from its activities (3 of 7 complete → 43%): *not started* if none has begun, *in progress* once any has, *completed* when every activity is complete or marked not-applicable.
 
-1. Define our home-buying strategy · 2. Prepare our finances · 3. Prepare for the attending-income transition · 4. Learn mortgage options · 5. Interview lenders · 6. Obtain preapproval · 7. Find & interview buyer's agents · 8. Build the professional team · 9. Research towns & schools · 10. Begin the active search · 11. Tour & evaluate properties · 12. Prepare an offer · 13. Negotiation · 14. Attorney review · 15. Inspections & due diligence · 16. Finalize financing · 17. Prepare for closing · 18. Closing & post-closing.
+1. **Get Ready** — Strategy · Finances · Future income (attending-income transition) · Towns & schools · Home preferences · School priorities · Commute
+2. **Buying Power** — Mortgage options · Lender interviews · Preapproval
+3. **Team & Search Plan** — Buyer's agent · Professional team
+4. **Find a Home** — Active search · Touring
+5. **Make an Offer** — Offer prep · Negotiation · Attorney review
+6. **Close** — Inspections & due diligence · Financing · Closing prep · Closing & after
 
-Every guided step page follows the same shape: **what it accomplishes · why it matters for us** (personalized from the household profile) **· actions · decisions · questions to ask · documents · resources · mistakes to avoid · completion criteria · related tools.**
+The Stage → Activity grouping lives in `src/lib/guide/journey-stages.ts`. Activities are defined as versioned TypeScript content (`src/lib/guide`), separate from the household's stored progress, so guide wording can be revised without losing state. **Naming note:** the code still calls an activity a `GuideStage` / `StageId` (and the `journeyStages` table and `stageId` columns store per-*activity* state) — those names predate the six-Stage layer and are kept on purpose, because saved progress is keyed by these ids. Home preferences, School priorities, and Commute were carved out of Strategy without changing any task id, so nothing already recorded moved. No database migration was needed for the Stage layer. `/journey/<id>` serves either a Stage (e.g. `/journey/get-ready`) or an activity (e.g. `/journey/strategy`), so existing activity links keep working.
+
+Every activity page follows the same shape: **what it accomplishes · why it matters for us** (personalized from the household profile) **· actions · decisions · questions to ask · documents · resources · mistakes to avoid · completion criteria · related tools.**
 
 ## Navigation
 
-- **Journey** *(`/journey`, the signed-in landing page)* — current stage, weighted overall progress, target closing window, next recommended actions, blocking items, decisions awaiting input, recently completed milestones, five readiness meters (financial, mortgage, team, search, offer), and the full 18-stage roadmap. The former dashboard's key figures live here. (`/`, the site root, is the logged-out public welcome page — see "Public entry & sign-in" below.)
-- **Properties** — add / edit / archive / restore / delete, per-property cost estimates, guardrail banding, missing-info flags, a printable report, and a per-property **deal** covering stages 12–18 (offer readiness, negotiation log, attorney review, inspections, financing, closing prep, post-closing) with a prominent private **walk-away price**.
+- **Journey** *(`/journey`, the signed-in landing page)* — the six Stages with each one's activities side by side, what is in progress right now, weighted overall progress, target closing window, blocking items, and five readiness meters (financial, mortgage, team, search, offer). The former dashboard's key figures live here. (`/`, the site root, is the logged-out public welcome page — see "Public entry & sign-in" below.)
+- **Properties** — add / edit / archive / restore / delete, per-property cost estimates, guardrail banding, missing-info flags, a printable report, and a per-property **deal** covering the offer-prep-through-closing activities (offer readiness, negotiation log, attorney review, inspections, financing, closing prep, post-closing) with a prominent private **walk-away price**.
 - **Compare** — 2–5 properties side by side; most-favorable cell marked per row (never an automatic winner).
 - **Finances** — a transparent mortgage & cash planner with named, duplicable scenarios.
 - **Lenders** — a quote tracker plus a separate **approvals** tab that distinguishes readiness conversation → prequalification → formal preapproval → fully underwritten. Never ranked by rate alone.
@@ -494,7 +501,7 @@ src/
     manifest.ts icon.tsx apple-icon.tsx icons/  # PWA manifest + generated icons
     (app)/                  # every authenticated page, wrapped by HouseholdProvider + WorkspaceGate + AppShell;
                               #   AppShell/AppNav/BottomNav render per-mode via lib/workspace/navigation.ts
-      journey/               # buyer: Journey overview (landing, "/journey") + [stageId]/ guided step pages (18 stages)
+      journey/               # buyer: Journey overview (landing, "/journey") + [stageId]/ a Stage page or an activity page (6 Stages, 21 activities)
       properties/             # buyer: list + [id] detail (+ per-property deal)
       visit/[id]/              # buyer: Visit mode
       professionals/ resources/ compare/ finances/ lenders/ timeline/ toolkit/  # buyer-only tools
@@ -550,7 +557,7 @@ The distinction between `lib/guide` (content) and `lib/journey` (engines over sa
 
 ### Tested behavior
 
-`npm test` covers the calculation core (mortgage payment, cumulative interest, closing cash, reserves, DTI, guardrail classification, the combined plan evaluation, comparison, lender estimates, the overall score), JSON export/import validation, the legacy local database (seeding idempotency and the export → wipe → import round-trip, plus the migration read path that a real browser upgrade would exercise), and a **journey engine suite** verifying guide-content integrity (18 unique stages, globally-unique action/decision ids, an attending contract weighted far above reading a resource), deterministic `autoCheck` criteria (guardrails, childcare, the attending-timing risk, distinct-lender counting, visit-before-Primary), weighted progress and descriptive readiness, the next-action rules (including the critical walk-away-exceeded warning), and personalization token substitution. It also covers the **property form draft ↔ persisted boundary** (`lib/property-form`: a draft may start with an empty address; `prepareProperty` trims and rejects an empty/whitespace address inline, and only a saved property must satisfy the strict `propertySchema`) and the Homes search filter (`lib/property-search`).
+`npm test` covers the calculation core (mortgage payment, cumulative interest, closing cash, reserves, DTI, guardrail classification, the combined plan evaluation, comparison, lender estimates, the overall score), JSON export/import validation, the legacy local database (seeding idempotency and the export → wipe → import round-trip, plus the migration read path that a real browser upgrade would exercise), and a **journey engine suite** verifying guide-content integrity (21 unique activities, every activity in exactly one of the six Stages, globally-unique action/decision ids, an attending contract weighted far above reading a resource), deterministic `autoCheck` criteria (guardrails, childcare, the attending-timing risk, distinct-lender counting, visit-before-Primary), weighted progress, derived Stage progress/status (activities never block one another), and descriptive readiness, the next-action rules (including the critical walk-away-exceeded warning), and personalization token substitution. It also covers the **property form draft ↔ persisted boundary** (`lib/property-form`: a draft may start with an empty address; `prepareProperty` trims and rejects an empty/whitespace address inline, and only a saved property must satisfy the strict `propertySchema`) and the Homes search filter (`lib/property-search`).
 
 The Supabase-backed read/write layer (`lib/hooks.ts`, `lib/repo.ts`) has no unit tests against a real Postgres/RLS instance — there is no CI Supabase instance to run against (see "Suggested future enhancements") — but it is exercised end-to-end by the Playwright suite below, and has been verified manually against a real project.
 
