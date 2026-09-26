@@ -1,67 +1,84 @@
 import { describe, expect, it } from "vitest";
 import { townResearchSchema, type TownResearch } from "@/lib/models";
+import type { GeographyResult } from "@/lib/geography/search";
 import {
+  choiceFromGeography,
   choiceFromLegacyName,
-  choiceFromReference,
   customChoice,
   formatTown,
+  linkLegacyChoices,
   planTownSave,
   sameTown,
-  searchTowns,
   selectionFrom,
   townNames,
 } from "./towns";
-import { REFERENCE_TOWNS, townRefId } from "./town-reference";
 
 let n = 0;
+const uuid = (i: number) => `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`;
 const row = (over: Partial<TownResearch> & { name: string }): TownResearch =>
-  townResearchSchema.parse({ id: `t${++n}`, createdAt: "2026-01-01", updatedAt: "2026-01-01", ...over });
-const ref = (name: string) => choiceFromReference(REFERENCE_TOWNS.find((t) => t.name === name)!);
+  townResearchSchema.parse({ id: uuid(++n), createdAt: "2026-01-01", updatedAt: "2026-01-01", ...over });
 
-describe("reference data", () => {
-  it("has unique canonical ids", () => {
-    expect(new Set(REFERENCE_TOWNS.map((t) => t.id)).size).toBe(REFERENCE_TOWNS.length);
-    expect(townRefId("West Windsor", "NJ")).toBe("nj-west-windsor");
-  });
+const geo = (i: number, name: string, over: Partial<GeographyResult> = {}): GeographyResult => ({
+  id: uuid(1000 + i),
+  censusGeoid: `34${String(i).padStart(5, "0")}`,
+  name,
+  displayName: `${name}, NJ`,
+  state: "NJ",
+  stateName: "New Jersey",
+  geographyType: "place",
+  detail: "New Jersey",
+  ...over,
 });
-
-describe("searchTowns", () => {
-  it("matches by name, name plus state, and state", () => {
-    expect(searchTowns("princ").map((t) => t.name)).toContain("Princeton");
-    expect(searchTowns("Princeton, NJ")[0].name).toBe("Princeton");
-    expect(searchTowns("west windsor nj").map((t) => t.name)).toEqual(["West Windsor"]);
-    expect(searchTowns("new jersey").length).toBeGreaterThan(0);
-    expect(searchTowns("princeton, PA")).toEqual([]);
-    expect(searchTowns("  ")).toEqual([]);
-  });
-  it("ranks names that start with the query first", () => {
-    const names = searchTowns("Prin").map((t) => t.name);
-    expect(names[0]).toBe("Princeton");
-  });
-});
+const princeton = choiceFromGeography(geo(1, "Princeton"));
+const plainsboro = choiceFromGeography(geo(2, "Plainsboro"));
+const washingtonMorris = choiceFromGeography(geo(3, "Washington Township", { county: "Morris County", geographyType: "county_subdivision" }));
+const washingtonWarren = choiceFromGeography(geo(4, "Washington Township", { county: "Warren County", geographyType: "county_subdivision" }));
 
 describe("choices", () => {
-  it("formats with the state", () => {
-    expect(formatTown(ref("Princeton"))).toBe("Princeton, NJ");
+  it("formats with the state and keeps the geography id", () => {
+    expect(formatTown(princeton)).toBe("Princeton, NJ");
+    expect(princeton.geographyId).toBe(uuid(1001));
     expect(formatTown({ name: "Somewhere", state: "" })).toBe("Somewhere");
   });
-  it("marks unlisted locations as custom and rejects bad input", () => {
-    expect(customChoice("  Hidden   Valley ", "pa")).toEqual({ name: "Hidden Valley", state: "PA", refId: null, isCustom: true });
+  it("custom locations have no geography and are flagged custom", () => {
+    expect(customChoice("  Hidden   Valley ", "pa")).toEqual({ name: "Hidden Valley", state: "PA", county: "", geographyId: null, isCustom: true });
     expect(customChoice("", "NJ")).toBeNull();
     expect(customChoice("X", "ZZ")).toBeNull();
   });
-  it("uses the canonical entry when a custom name is really in the list", () => {
-    expect(customChoice("princeton", "NJ")).toEqual(ref("Princeton"));
+  it("tells same-named townships apart by geography, and never merges them", () => {
+    expect(sameTown(washingtonMorris, washingtonWarren)).toBe(false);
+    expect(sameTown(washingtonMorris, { ...washingtonMorris })).toBe(true);
+    // Unlinked older names fall back to name (+ state/county when both know them).
+    expect(sameTown({ name: "Washington Township", state: "", county: "", geographyId: null, isCustom: false }, washingtonMorris)).toBe(true);
+    expect(sameTown({ name: "princeton", state: "PA", county: "", geographyId: null, isCustom: false }, princeton)).toBe(false);
   });
-  it("compares by id, else name, tolerating an unknown state", () => {
-    expect(sameTown(ref("Princeton"), ref("Princeton"))).toBe(true);
-    expect(sameTown({ name: "princeton", state: "", refId: null }, ref("Princeton"))).toBe(true);
-    expect(sameTown({ name: "Princeton", state: "PA", refId: null }, ref("Princeton"))).toBe(false);
+  it("reads older free-text names, with or without a state", () => {
+    expect(choiceFromLegacyName("Princeton")).toMatchObject({ name: "Princeton", state: "", geographyId: null, isCustom: false });
+    expect(choiceFromLegacyName("Princeton, NJ")).toMatchObject({ name: "Princeton", state: "NJ" });
   });
-  it("resolves older free-text names", () => {
-    expect(choiceFromLegacyName("Princeton")).toEqual(ref("Princeton"));
-    expect(choiceFromLegacyName("Princeton, NJ")).toEqual(ref("Princeton"));
-    expect(choiceFromLegacyName("Nowhere Heights")).toEqual({ name: "Nowhere Heights", state: "", refId: null, isCustom: true });
+});
+
+describe("linkLegacyChoices", () => {
+  it("links a name only when exactly one result matches, preferring the Census place", () => {
+    const place = geo(1, "Princeton");
+    const subdivision = geo(5, "Princeton", { geographyType: "county_subdivision", county: "Mercer County" });
+    const search = async (q: string) => (q === "Princeton" ? [place, subdivision] : q === "Ambiguous" ? [geo(6, "Ambiguous"), geo(7, "Ambiguous")] : []);
+    const linked = choiceFromLegacyName("Princeton");
+    return Promise.all([
+      linkLegacyChoices([linked, choiceFromLegacyName("Ambiguous"), choiceFromLegacyName("Nowhere"), princeton], search),
+    ]).then(([out]) => {
+      expect(out[0].geographyId).toBe(place.id);
+      expect(out[1].geographyId).toBeNull();
+      expect(out[2].geographyId).toBeNull();
+      expect(out[3]).toBe(princeton);
+    });
+  });
+  it("leaves a choice alone when the search fails", async () => {
+    const c = choiceFromLegacyName("Princeton");
+    const out = await linkLegacyChoices([c], async () => {
+      throw new Error("offline");
+    });
+    expect(out[0]).toBe(c);
   });
 });
 
@@ -86,21 +103,26 @@ describe("selectionFrom", () => {
 });
 
 describe("planTownSave", () => {
-  it("creates rows for new towns with role, state, id and order", () => {
-    const plan = planTownSave([], { primary: [ref("Princeton"), ref("Plainsboro")], backup: [customChoice("Hidden Valley", "PA")!] });
+  it("creates rows with role, state, county, geography id and order; custom rows get no geography", () => {
+    const custom = customChoice("Hidden Valley", "PA")!;
+    const plan = planTownSave([], { primary: [princeton, plainsboro], backup: [washingtonMorris, custom] });
     expect(plan.update).toEqual([]);
     expect(plan.create).toEqual([
-      { name: "Princeton", state: "NJ", refId: "nj-princeton", isCustom: false, designation: "primary", priority: 1 },
-      { name: "Plainsboro", state: "NJ", refId: "nj-plainsboro", isCustom: false, designation: "primary", priority: 2 },
-      { name: "Hidden Valley", state: "PA", refId: null, isCustom: true, designation: "backup", priority: 1 },
+      { name: "Princeton", state: "NJ", county: "", geographyId: princeton.geographyId, isCustom: false, designation: "primary", priority: 1 },
+      { name: "Plainsboro", state: "NJ", county: "", geographyId: plainsboro.geographyId, isCustom: false, designation: "primary", priority: 2 },
+      { name: "Washington Township", state: "NJ", county: "Morris County", geographyId: washingtonMorris.geographyId, isCustom: false, designation: "backup", priority: 1 },
+      { name: "Hidden Valley", state: "PA", county: "", geographyId: null, isCustom: true, designation: "backup", priority: 2 },
     ]);
   });
-  it("updates a matching research row in place, keeping its notes", () => {
+  it("keeps two same-named townships as two rows", () => {
+    const plan = planTownSave([], { primary: [washingtonMorris, washingtonWarren], backup: [] });
+    expect(plan.create.map((c) => c.county)).toEqual(["Morris County", "Warren County"]);
+  });
+  it("updates a matching research row in place, keeping its notes and linking it to the geography", () => {
     const existing = row({ name: "Princeton", designation: "considering", generalNotes: "Loved the downtown" });
-    const plan = planTownSave([existing], { primary: [ref("Princeton")], backup: [] });
+    const plan = planTownSave([existing], { primary: [princeton], backup: [] });
     expect(plan.create).toEqual([]);
-    expect(plan.update).toHaveLength(1);
-    expect(plan.update[0]).toMatchObject({ id: existing.id, designation: "primary", priority: 1, state: "NJ", refId: "nj-princeton", generalNotes: "Loved the downtown" });
+    expect(plan.update[0]).toMatchObject({ id: existing.id, designation: "primary", priority: 1, state: "NJ", geographyId: princeton.geographyId, generalNotes: "Loved the downtown" });
   });
   it("never deletes: removed primary/backup towns fall back to considering", () => {
     const gone = row({ name: "Summit", designation: "primary", priority: 1 });
@@ -109,10 +131,15 @@ describe("planTownSave", () => {
     expect(plan.create).toEqual([]);
     expect(plan.update).toEqual([{ ...gone, designation: "considering", priority: null }]);
   });
-  it("keeps a town in only one list and makes no change when nothing changed", () => {
-    const p = row({ name: "Princeton", designation: "primary", priority: 1, state: "NJ", refId: "nj-princeton" });
-    const plan = planTownSave([p], { primary: [ref("Princeton")], backup: [ref("Princeton")] });
-    expect(plan).toEqual({ create: [], update: [] });
+  it("is stable: saving the same selection twice changes nothing (persistence after reload)", () => {
+    const first = planTownSave([], { primary: [princeton], backup: [plainsboro] });
+    const saved = first.create.map((c) => row(c));
+    const reloaded = selectionFrom(saved, { primaryTowns: [], backupTowns: [] });
+    expect(reloaded).toEqual({ primary: [princeton], backup: [plainsboro] });
+    expect(planTownSave(saved, reloaded)).toEqual({ create: [], update: [] });
+  });
+  it("keeps a town in only one list", () => {
+    expect(planTownSave([], { primary: [princeton], backup: [princeton] }).create).toHaveLength(1);
   });
 });
 

@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { setActivityResponses, updatePreferences } from "@/lib/repo";
+import { saveTownSelection, setActivityResponses, updatePreferences } from "@/lib/repo";
+import { selectionFrom, type TownChoice } from "@/lib/journey/towns";
+import { LocationSelector } from "./location-selector";
 import { parseActivityResponses, readActivityResponses } from "@/lib/journey/activity-responses";
 import {
   AVOID_PRESETS,
@@ -18,13 +20,14 @@ import {
   type HomeTypeId,
 } from "@/lib/journey/home-preferences";
 import { Field, Input, Panel, Textarea } from "@/components/ui";
-import { AddItem, PresetChipPicker, RemovableChip, SegmentedField, ToggleChip } from "./fields";
+import { PresetChipPicker, SegmentedField, ToggleChip } from "./fields";
 import { ActivityFormFrame } from "./activity-form-frame";
 import type { ActivityFormProps } from "./index";
 
 /**
  * Home preferences — structured replacement for the generic activity page.
- * Towns, bedroom and bathroom minimums live on `homePreferences`; everything
+ * Primary locations are the household's `towns` rows (the same list the Towns activity edits);
+ * bedroom and bathroom minimums live on `homePreferences`; everything
  * else lives in this activity's `responses` (see `lib/journey/home-preferences.ts`).
  * Nothing is written until Save, and only fields that changed are written.
  */
@@ -40,8 +43,13 @@ export function HomePreferencesActivity({ activity, s }: ActivityFormProps) {
   const set = <K extends keyof HomePreferenceAnswers>(key: K, value: HomePreferenceAnswers[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
 
-  const preview = useMemo(() => describeHome(draft), [draft]);
-  const knownTowns = useMemo(() => s.towns.map((t) => t.name).filter((n) => !draft.towns.includes(n)), [s.towns, draft.towns]);
+  // Locations are structured rows, not part of the text answers; the preview reads their names.
+  const initialSelection = useMemo(
+    () => selectionFrom(s.towns, { primaryTowns: s.preferences.primaryTowns, backupTowns: s.preferences.backupTowns }),
+    [s.towns, s.preferences.primaryTowns, s.preferences.backupTowns],
+  );
+  const [locations, setLocations] = useState<TownChoice[]>(initialSelection.primary);
+  const preview = useMemo(() => describeHome({ ...draft, towns: locations.map((t) => t.name) }), [draft, locations]);
   const legacyNotes = [
     ["Required", s.preferences.requiredNotes],
     ["Preferred", s.preferences.preferredNotes],
@@ -64,11 +72,12 @@ export function HomePreferencesActivity({ activity, s }: ActivityFormProps) {
       avoidCustom: cleanList(draft.avoidCustom),
       extraNotes,
     });
-    const towns = cleanList(draft.towns);
-    const patch: { primaryTowns?: string[]; minBedrooms?: number; minBathrooms?: number } = {};
-    if (JSON.stringify(towns) !== JSON.stringify(initial.towns)) patch.primaryTowns = towns;
+    const patch: { minBedrooms?: number; minBathrooms?: number } = {};
     if (draft.minBedrooms !== initial.minBedrooms) patch.minBedrooms = draft.minBedrooms;
     if (draft.minBathrooms !== initial.minBathrooms) patch.minBathrooms = draft.minBathrooms;
+    if (JSON.stringify(locations) !== JSON.stringify(initialSelection.primary)) {
+      await saveTownSelection(s.towns, { primary: locations, backup: initialSelection.backup });
+    }
     if (Object.keys(patch).length > 0) await updatePreferences(patch);
     await setActivityResponses("home-preferences", responses, storedResponses);
   }
@@ -76,17 +85,7 @@ export function HomePreferencesActivity({ activity, s }: ActivityFormProps) {
   return (
     <ActivityFormFrame activity={activity} s={s} onSave={save} aside={<HomePreview preview={preview} />}>
       <Section title="Where are we looking?">
-        <div className="flex flex-wrap items-center gap-2">
-          {draft.towns.map((t) => (
-            <RemovableChip key={t} label={t} onRemove={() => set("towns", draft.towns.filter((x) => x !== t))} />
-          ))}
-          <AddItem
-            addLabel={draft.towns.length > 0 ? "Add another town" : "Add a town"}
-            placeholder="e.g. Princeton"
-            suggestions={knownTowns}
-            onAdd={(town) => set("towns", cleanList([...draft.towns, town]))}
-          />
-        </div>
+        <LocationSelector label="primary locations" value={locations} onChange={setLocations} taken={initialSelection.backup} takenLabel="In backup locations" reorderable />
       </Section>
 
       <Section title="Home type" hint="Pick every type you'd consider.">

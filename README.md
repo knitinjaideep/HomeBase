@@ -263,6 +263,20 @@ If someone signed in before an invite existed for them, `bootstrap_household()`'
 5. Each account makes one harmless test edit and confirms the other sees it after a refocus/reload.
 6. The old accidental household is left alone — deciding whether/how to clean it up later is a separate, deliberate action, never automatic.
 
+## Geography data
+
+Locations in the Journey (primary / backup towns, home preferences) come from a `geographies` table in Supabase, filled from the U.S. Census Bureau 2025 Geography Information API (places and county subdivisions). The browser never talks to Census: it searches `GET /api/geographies/search`, which reads Supabase. A location a household picks is stored on its `towns` row as `geographyId`; a custom location has no geography and no GEOID.
+
+Populate or refresh a state (idempotent — re-running only writes what changed):
+
+```bash
+npm run sync:geographies -- --state=NJ --dry-run   # fetch from Census and count; writes nothing
+npm run sync:geographies -- --state=NJ --yes       # write to the Supabase project in .env.local
+npm run sync:geographies -- --state=NY,PA --yes    # any state, no schema change
+```
+
+Needs `CENSUS_API_KEY` (and, for real writes, `SUPABASE_SERVICE_ROLE_KEY`) in `.env.local`. Both are server-side secrets used only by this command. The command prints which Supabase host it will write to and refuses to write without `--yes`; point `.env.local` at the project you mean. The `geographies` table (migration `0031`) must exist first, so apply the migration before syncing.
+
 ## Environment variables
 
 | Variable | Required locally? | Required in Vercel? | Public or secret? | Purpose |
@@ -275,7 +289,7 @@ If someone signed in before an invite existed for them, `bootstrap_household()`'
 
 \* `PREVIEW_GATE_ENABLED` isn't sensitive on its own, but keep it alongside the two secrets since it controls whether they're enforced.
 
-Aside from the temporary preview gate, the app has no other environment variables, no server-only secrets besides the two above, and no code path that reads a Supabase `service_role` key.
+Aside from the temporary preview gate, the running app has no other environment variables and no server-only secrets besides the two above, and no code path in the app reads a Supabase `service_role` key. The one exception is the operator-run geography sync command, which reads `CENSUS_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` from your local `.env.local` only (never Vercel, never CI) — see "Geography data".
 
 - **`.env.local`** → local development only, git-ignored, never committed.
 - **Vercel Environment Variables** (Project Settings → Environment Variables) → what Production and Preview deployments actually run with. Set both variables for both environments.

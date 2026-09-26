@@ -50,9 +50,11 @@ export const townResearchSchema = baseEntitySchema.extend({
   name: z.string().min(1),
   /** Two-letter US state; "" when unknown (rows created before states were recorded). */
   state: z.string().default(""),
-  /** Canonical id from the bundled town reference list, or null for custom / older rows. */
-  refId: z.string().nullable().default(null),
-  /** A location the household typed in because it is not in the reference list. */
+  /** County, for telling apart same-named townships ("Washington Township, Morris County"). */
+  county: z.string().default(""),
+  /** The Census-backed `geographies` row this location is, or null (custom, or not matched yet). */
+  geographyId: z.string().uuid().nullable().default(null),
+  /** A location the household typed in because no Census geography fit. Never has a geography. */
   isCustom: z.boolean().default(false),
   designation: townDesignationSchema.default("considering"),
   /** Optional 1-based order within its designation; null = not ranked. */

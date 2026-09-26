@@ -1,16 +1,19 @@
 import type { TownResearch } from "@/lib/models";
-import { REFERENCE_TOWNS, US_STATES, referenceTownById, townRefId, type ReferenceTown } from "./town-reference";
+import { stateByAbbreviation } from "@/lib/geography/states";
+import type { GeographyResult } from "@/lib/geography/search";
 
 /**
- * Pure rules for the Towns activity: searching, de-duplicating, adopting older
- * selections, and turning the household's choices into row changes.
+ * Pure rules for the Locations (Towns) activity: what a chosen location is,
+ * de-duplicating, adopting older selections, and turning the household's
+ * choices into row changes.
  *
- * Where it is stored: the household's `towns` rows. `designation` is the role
- * (only "primary" and "backup" are managed here — "considering" and "ruled-out"
- * belong to town research and are never set by this activity), `priority` is
- * the optional order, and `refId` / `isCustom` say whether the location came
- * from the reference list. Selections made earlier in `homePreferences`
- * (`primaryTowns`, `backupTowns`) are adopted, never deleted.
+ * Where it is stored: the household's `towns` rows (one per location).
+ * `designation` is the role — only "primary" and "backup" are managed here;
+ * "considering" and "ruled-out" belong to town research and are never set by
+ * this activity. `priority` is the optional order, `geographyId` links to the
+ * Census-backed `geographies` row, and `isCustom` marks a location typed by the
+ * household (which never has a geography or a GEOID). Selections made earlier in
+ * `homePreferences` (`primaryTowns`, `backupTowns`) are adopted, never deleted.
  */
 
 export type TownRole = "primary" | "backup";
@@ -20,8 +23,10 @@ export interface TownChoice {
   name: string;
   /** Two-letter state, "" when unknown. */
   state: string;
-  /** Canonical reference id, or null for custom / unrecognised locations. */
-  refId: string | null;
+  /** "" unless the geography has one (county subdivisions do). */
+  county: string;
+  /** `geographies.id`; null for custom locations and older names not matched yet. */
+  geographyId: string | null;
   isCustom: boolean;
 }
 
@@ -36,69 +41,38 @@ export function formatTown(t: Pick<TownChoice, "name" | "state">): string {
   return t.state ? `${t.name}, ${t.state}` : t.name;
 }
 
-export function choiceFromReference(t: ReferenceTown): TownChoice {
-  return { name: t.name, state: t.state, refId: t.id, isCustom: false };
+export function choiceFromGeography(g: GeographyResult): TownChoice {
+  return { name: g.name, state: g.state, county: g.county ?? "", geographyId: g.id, isCustom: false };
 }
 
 /** A location typed by the household. Returns null when the name is empty or the state is not a US state. */
 export function customChoice(name: string, state: string): TownChoice | null {
   const cleanName = name.trim().replace(/\s+/g, " ");
-  const code = state.trim().toUpperCase();
-  if (!cleanName || !(code in US_STATES)) return null;
-  // Typing something that is already in the reference list should use the canonical entry.
-  const known = referenceTownById(townRefId(cleanName, code));
-  return known ? choiceFromReference(known) : { name: cleanName, state: code, refId: null, isCustom: true };
+  const st = stateByAbbreviation(state);
+  if (!cleanName || !st) return null;
+  return { name: cleanName, state: st.abbreviation, county: "", geographyId: null, isCustom: true };
 }
 
-/** Same location? Ids decide when both have one; otherwise name (and state when both know it). */
-export function sameTown(a: Pick<TownChoice, "name" | "state" | "refId">, b: Pick<TownChoice, "name" | "state" | "refId">): boolean {
-  if (a.refId && b.refId) return a.refId === b.refId;
+/** Same location? Geography ids decide when both have one; otherwise name, and state/county when both know them. */
+export function sameTown(a: TownChoice | TownResearch, b: TownChoice | TownResearch): boolean {
+  if (a.geographyId && b.geographyId) return a.geographyId === b.geographyId;
   if (a.name.trim().toLowerCase() !== b.name.trim().toLowerCase()) return false;
-  return !a.state || !b.state || a.state === b.state;
+  return (!a.state || !b.state || a.state === b.state) && (!a.county || !b.county || a.county === b.county);
 }
 
-/**
- * Reference towns matching a query. Every word must appear in "name, state" or
- * the state's full name, so "princeton", "princeton nj", "Princeton, NJ" and
- * "new jersey" all work. Names that start with the query come first.
- */
-export function searchTowns(query: string, limit = 8): ReferenceTown[] {
-  const words = query.toLowerCase().split(/[\s,]+/).filter(Boolean);
-  if (words.length === 0) return [];
-  const q = words.join(" ");
-  const scored: { town: ReferenceTown; rank: number }[] = [];
-  for (const town of REFERENCE_TOWNS) {
-    const name = town.name.toLowerCase();
-    const haystack = `${name} ${town.state.toLowerCase()} ${(US_STATES[town.state] ?? "").toLowerCase()}`;
-    if (!words.every((w) => haystack.includes(w))) continue;
-    scored.push({ town, rank: name.startsWith(q) ? 0 : name.startsWith(words[0]) ? 1 : 2 });
-  }
-  return scored
-    .sort((a, b) => a.rank - b.rank || a.town.name.localeCompare(b.town.name))
-    .slice(0, limit)
-    .map((x) => x.town);
-}
-
-/** Turn an older free-text entry ("Princeton" / "Princeton, NJ") into a choice. */
+/** Turn an older free-text entry ("Princeton" / "Princeton, NJ") into a choice not yet linked to a geography. */
 export function choiceFromLegacyName(raw: string): TownChoice {
   const text = raw.trim();
   const [namePart, statePart] = text.split(/\s*,\s*/);
-  const state = statePart?.toUpperCase();
-  if (state && state in US_STATES) {
-    return customChoice(namePart, state) ?? { name: text, state: "", refId: null, isCustom: true };
-  }
-  const matches = REFERENCE_TOWNS.filter((t) => t.name.toLowerCase() === text.toLowerCase());
-  if (matches.length === 1) return choiceFromReference(matches[0]);
-  return { name: text, state: "", refId: null, isCustom: true };
+  const st = statePart ? stateByAbbreviation(statePart) : undefined;
+  return { name: st ? namePart : text, state: st?.abbreviation ?? "", county: "", geographyId: null, isCustom: false };
 }
 
+/** A choice that still needs matching to a Census geography (an older free-text name). */
+export const isUnlinked = (t: TownChoice) => !t.geographyId && !t.isCustom;
+
 function choiceFromRow(t: TownResearch): TownChoice {
-  const ref = referenceTownById(t.refId);
-  if (ref) return choiceFromReference(ref);
-  if (t.state) return { name: t.name, state: t.state, refId: t.refId, isCustom: t.isCustom };
-  // Row from before states were recorded: adopt the reference entry when the name is unambiguous.
-  const legacy = choiceFromLegacyName(t.name);
-  return { ...legacy, isCustom: legacy.refId ? false : true };
+  return { name: t.name, state: t.state, county: t.county, geographyId: t.geographyId, isCustom: t.isCustom };
 }
 
 /** Rows of one role, in the household's order (ranked first, then alphabetical). */
@@ -135,8 +109,36 @@ export function selectionFrom(
   return { primary, backup };
 }
 
+/**
+ * Link older free-text choices to a Census geography, when that is unambiguous:
+ * exactly one result with the same name (preferring the Census place when the
+ * same municipality also appears as a county subdivision). Anything unclear is
+ * left unlinked for the household to re-pick — never guessed.
+ */
+export async function linkLegacyChoices(
+  choices: TownChoice[],
+  search: (query: string, state?: string) => Promise<GeographyResult[]>,
+): Promise<TownChoice[]> {
+  return Promise.all(
+    choices.map(async (c) => {
+      if (!isUnlinked(c)) return c;
+      let results: GeographyResult[] = [];
+      try {
+        results = await search(c.name, c.state || undefined);
+      } catch (err) {
+        console.error("Could not match a saved town to a Census location", err);
+        return c;
+      }
+      const exact = results.filter((r) => r.name.toLowerCase() === c.name.toLowerCase());
+      const places = exact.filter((r) => r.geographyType === "place");
+      const pick = exact.length === 1 ? exact[0] : places.length === 1 ? places[0] : undefined;
+      return pick ? choiceFromGeography(pick) : c;
+    }),
+  );
+}
+
 export interface TownSavePlan {
-  create: (Pick<TownResearch, "name" | "state" | "refId" | "isCustom" | "designation" | "priority">)[];
+  create: Pick<TownResearch, "name" | "state" | "county" | "geographyId" | "isCustom" | "designation" | "priority">[];
   /** Full rows with the changed fields applied; research notes are carried over untouched. */
   update: TownResearch[];
 }
@@ -159,7 +161,7 @@ export function planTownSave(existing: TownResearch[], selection: TownSelection)
 
   for (const { c, role, priority } of wanted) {
     const row = existing.find((t) => !used.has(t.id) && sameTown(t, c));
-    const fields = { name: c.name, state: c.state, refId: c.refId, isCustom: c.isCustom, designation: role, priority };
+    const fields = { name: c.name, state: c.state, county: c.county, geographyId: c.geographyId, isCustom: c.isCustom, designation: role, priority };
     if (!row) {
       plan.create.push(fields);
       continue;
