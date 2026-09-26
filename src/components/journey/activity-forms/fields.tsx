@@ -94,7 +94,7 @@ export function NumberField({
 
 // ---- Chips -----------------------------------------------------------------
 
-const CHIP_BASE = "inline-flex min-h-[2.5rem] items-center gap-1.5 rounded-full border px-3 text-sm";
+const CHIP_BASE = "inline-flex min-h-[2.5rem] max-w-full items-center gap-1.5 break-words rounded-full border px-3 py-1 text-left text-sm";
 
 /** A chip the household can toggle on and off. */
 export function ToggleChip({ label, selected, onToggle }: { label: string; selected: boolean; onToggle: () => void }) {

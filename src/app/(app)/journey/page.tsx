@@ -58,7 +58,7 @@ function JourneyOverview({ s }: { s: JourneySnapshot }) {
                   <p className="mt-0.5 text-ink-muted">{blocker.why}</p>
                 </div>
                 <Link href={blocker.href} className="shrink-0 text-sm font-medium text-critical hover:underline">
-                  Review →
+                  View details →
                 </Link>
               </div>
             </Callout>

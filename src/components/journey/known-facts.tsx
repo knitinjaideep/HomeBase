@@ -20,7 +20,7 @@ export function FactList({ facts }: { facts: JourneyFact[] }) {
             className="flex min-h-[3.25rem] flex-col justify-center rounded-lg border border-line bg-surface px-3 py-2 hover:border-accent/50"
           >
             <span className="text-xs text-ink-subtle">{fact.label}</span>
-            <span className="text-sm font-medium text-ink">{fact.value}</span>
+            <span className="break-words text-sm font-medium text-ink">{fact.value}</span>
           </Link>
         </li>
       ))}

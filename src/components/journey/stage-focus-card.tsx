@@ -56,22 +56,22 @@ export function StageFocusCard({ sp }: { sp: JourneyStageProgress }) {
             {noneStarted ? "Start" : "Continue"} <span aria-hidden>→</span>
           </Link>
         ) : (
-          <span className="text-sm font-medium text-positive">✓ Every activity in this stage is complete.</span>
+          <span className="text-sm font-medium text-positive">✓ Every activity in this stage is completed.</span>
         )}
         <Link href={`/journey/${sp.stage.id}`} className={SECONDARY_LINK}>
-          View stage details <span aria-hidden>→</span>
+          View details <span aria-hidden>→</span>
         </Link>
       </div>
     </Panel>
   );
 }
 
-/** "3 of 7 activities complete", a bar, and the percentage. */
+/** "3 of 7 activities completed", a bar, and the percentage. */
 export function StageProgressLine({ sp, pct }: { sp: JourneyStageProgress; pct: number }) {
   return (
     <div className="mt-4 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-4">
       <span className="shrink-0 text-sm text-ink-muted">
-        {sp.activitiesDone} of {sp.activitiesTotal} activities complete
+        {sp.activitiesDone} of {sp.activitiesTotal} activities completed
         {sp.activitiesInProgress > 0 && <> · {sp.activitiesInProgress} in progress</>}
       </span>
       <div className="flex flex-1 items-center gap-3">
@@ -121,7 +121,7 @@ function ActivityChip({ ap, recommended }: { ap: ActivityProgress; recommended: 
       <span className="min-w-0 flex-1">
         <span className="block truncate text-ink">{ap.activity.shortTitle}</span>
         <span className="block text-xs text-ink-subtle">
-          {done ? "Complete" : underway ? `In progress · ${ap.actionsDone} of ${ap.actionsTotal} steps` : "Not started"}
+          {done ? "Completed" : underway ? `In progress · ${ap.actionsDone} of ${ap.actionsTotal} steps` : "Not started"}
         </span>
       </span>
       <span aria-hidden className="text-ink-subtle">

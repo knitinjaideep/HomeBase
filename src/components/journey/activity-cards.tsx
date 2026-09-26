@@ -76,7 +76,7 @@ export function ActivityCards({
                   </span>
                 ) : (
                   <span className="mt-3 inline-flex min-h-[2.5rem] items-center text-sm font-medium text-accent">
-                    View details <span aria-hidden className="ml-1.5">→</span>
+                    {ap.status === "completed" ? "Edit" : "View details"} <span aria-hidden className="ml-1.5">→</span>
                   </span>
                 )}
               </div>

@@ -374,7 +374,7 @@ function actionRow(id: string, status: string): never {
   return { id, status, stageId: "x", createdAt: TS, updatedAt: TS } as never;
 }
 
-/** Settle every task in an activity so its own status becomes completed/ready. */
+/** Settle every task in an activity so its own status becomes completed. */
 function settleActivity(activityId: string, status = "completed"): never[] {
   return getStage(activityId)!.actions.map((a) => actionRow(a.id, status));
 }
@@ -561,5 +561,24 @@ describe("journey stages", () => {
     expect(upNextStage(p.stages, "close")).toBeUndefined();
     const done = p.stages.map((sp) => (sp.stage.id === "buying-power" ? { ...sp, status: "completed" as const } : sp));
     expect(upNextStage(done, "get-ready")?.stage.id).toBe("team-search-plan");
+  });
+});
+
+describe("journey status vocabulary", () => {
+  it("never reports an activity as anything but not started, in progress or completed without an override", () => {
+    const allSettled = baseSnapshot({ actions: settleActivity("strategy") });
+    const partial = baseSnapshot({ actions: [actionRow(getStage("strategy")!.actions[0].id, "completed")] });
+    for (const s of [baseSnapshot(), partial, allSettled]) {
+      for (const ap of overallProgress(s).activities) {
+        expect(["not-started", "in-progress", "completed"]).toContain(ap.status);
+      }
+    }
+  });
+
+  it("computes stage progress as settled activities over all activities", () => {
+    const sp = overallProgress(baseSnapshot({ actions: settleActivity("strategy") })).stages.find((x) => x.stage.id === "get-ready")!;
+    const settled = sp.activities.filter((ap) => ap.status === "completed").length;
+    expect(sp.activitiesDone).toBe(settled);
+    expect(sp.fraction).toBeCloseTo(settled / sp.activitiesTotal);
   });
 });

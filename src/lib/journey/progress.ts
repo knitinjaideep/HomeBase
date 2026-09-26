@@ -44,12 +44,11 @@ export interface ActivityProgress {
 function deriveStatus(
   criteriaComplete: boolean,
   actionsDone: number,
-  actionsTotal: number,
   anyActive: boolean,
 ): JourneyStatus {
   if (criteriaComplete) return "completed";
   if (anyActive || actionsDone > 0) {
-    return actionsDone >= actionsTotal ? "ready" : "in-progress";
+    return "in-progress";
   }
   return "not-started";
 }
@@ -84,7 +83,7 @@ export function activityProgress(stage: GuideActivity, s: JourneySnapshot): Acti
   const criteriaComplete = criteriaTotal > 0 && criteriaMet === criteriaTotal;
 
   const override = s.stageStates.find((x) => x.id === stage.id)?.statusOverride ?? null;
-  const derived = deriveStatus(criteriaComplete, actionsDone, stage.actions.length, anyActive);
+  const derived = deriveStatus(criteriaComplete, actionsDone, anyActive);
 
   return {
     activity: stage,
@@ -235,13 +234,7 @@ export function readinessByArea(progressByActivity: ActivityProgress[]): AreaRea
 
     const allComplete = relevant.length > 0 && relevant.every((sp) => sp.status === "completed");
     const anyStarted = relevant.some((sp) => sp.status !== "not-started");
-    const status: JourneyStatus = allComplete
-      ? "completed"
-      : fraction >= 0.66
-        ? "ready"
-        : anyStarted
-          ? "in-progress"
-          : "not-started";
+    const status: JourneyStatus = allComplete ? "completed" : anyStarted ? "in-progress" : "not-started";
 
     return {
       area: id,

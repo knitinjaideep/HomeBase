@@ -92,7 +92,7 @@ export function UpNextCard({ sp }: { sp: JourneyStageProgress }) {
         href={`/journey/${sp.stage.id}`}
         className="mt-4 inline-flex min-h-[2.75rem] items-center gap-2 rounded-lg border border-line px-4 text-sm font-medium text-ink hover:border-accent/50 hover:text-accent"
       >
-        View stage <span aria-hidden>→</span>
+        View details <span aria-hidden>→</span>
       </Link>
     </Panel>
   );
@@ -112,7 +112,7 @@ export function StageSummaryCard({ sp, facts = [] }: { sp: JourneyStageProgress;
       <p className="mt-1 text-sm text-ink-muted">{sp.stage.goal}</p>
       <div className="mt-4 flex items-center justify-between text-sm text-ink-muted">
         <span>
-          {sp.activitiesDone} of {sp.activitiesTotal} activities complete
+          {sp.activitiesDone} of {sp.activitiesTotal} activities completed
         </span>
         <span className="font-medium text-ink">{pct}%</span>
       </div>
@@ -150,7 +150,7 @@ export function RecommendedNextCard({ recommended }: { recommended: ActivityProg
         href={`/journey/${recommended.activity.id}`}
         className="mt-3 inline-flex min-h-[2.75rem] items-center gap-2 rounded-lg bg-accent px-4 text-sm font-medium text-white hover:opacity-90"
       >
-        Go to {recommended.activity.shortTitle} <span aria-hidden>→</span>
+        {started ? "Continue" : "Start"} {recommended.activity.shortTitle} <span aria-hidden>→</span>
       </Link>
     </Panel>
   );

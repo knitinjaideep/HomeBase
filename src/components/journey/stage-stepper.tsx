@@ -91,7 +91,7 @@ function Step({
     "flex min-h-[2.75rem] items-center rounded-lg hover:bg-surface-muted/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
     className,
   );
-  const label = `${sp.stage.title}, ${statusLabel(sp.status)}, ${sp.activitiesDone} of ${sp.activitiesTotal} activities complete`;
+  const label = `${sp.stage.title}, ${statusLabel(sp.status)}, ${sp.activitiesDone} of ${sp.activitiesTotal} activities completed`;
   if (onSelect) {
     return (
       <button type="button" onClick={() => onSelect(sp.stage.id)} aria-pressed={selected} aria-label={label} className={classes}>
