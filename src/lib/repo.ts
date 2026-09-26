@@ -12,6 +12,7 @@
  * the current household instead of the local database handle.
  */
 
+import { parseActivityResponses, type ActivityResponseId } from "@/lib/journey/activity-responses";
 import { createClient } from "./supabase/client";
 import { getCurrentHouseholdId } from "./household/current";
 import { invalidateTable, invalidateTables } from "./data/invalidation";
@@ -395,6 +396,20 @@ export async function setStageState(
     "journeyStages",
     journeyStageStateSchema.parse({ id: stageId, createdAt: ts, updatedAt: ts, ...patch }),
   );
+}
+
+/**
+ * Save an activity's structured answers (`journeyStages.responses`). The values
+ * are validated with the activity's Zod schema and merged over what is already
+ * stored, so saving one field never discards another.
+ */
+export async function setActivityResponses<K extends ActivityResponseId>(
+  activityId: K,
+  values: Record<string, unknown>,
+  existing: Record<string, unknown> | undefined,
+): Promise<void> {
+  const merged = parseActivityResponses(activityId, { ...(existing ?? {}), ...values });
+  await setStageState(activityId, { responses: merged });
 }
 
 export async function setActionState(

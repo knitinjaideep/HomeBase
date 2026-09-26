@@ -16,6 +16,7 @@ import { DecisionRow } from "@/components/journey/decision-row";
 import { QuestionSetView } from "@/components/journey/question-set";
 import { AttendingTracker } from "@/components/journey/attending-tracker";
 import { TownResearchTool } from "@/components/journey/town-research-tool";
+import { ACTIVITY_FORMS } from "@/components/journey/activity-forms";
 import { StageChecklistPanel } from "@/components/journey/stage-checklist-panel";
 import { JourneyStageView } from "@/components/journey/journey-stage-view";
 import { Overlay } from "@/components/modal";
@@ -78,6 +79,9 @@ function StageView({ stage, s }: { stage: GuideActivity; s: JourneySnapshot }) {
     (r) => r.stageIds.includes(stage.id) && r.status !== "archived",
   );
   const topWarning = stage.warnings?.[0];
+  // A structured form, when this activity has one. It brings its own notes
+  // section, so the generic one below is skipped to avoid showing notes twice.
+  const StructuredForm = ACTIVITY_FORMS[stage.id];
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -131,6 +135,12 @@ function StageView({ stage, s }: { stage: GuideActivity; s: JourneySnapshot }) {
       {stage.id === "town-research" && (
         <div className="mb-6">
           <TownResearchTool towns={s.towns} />
+        </div>
+      )}
+
+      {StructuredForm && (
+        <div className="mb-8">
+          <StructuredForm activity={stage} s={s} />
         </div>
       )}
 
@@ -203,9 +213,11 @@ function StageView({ stage, s }: { stage: GuideActivity; s: JourneySnapshot }) {
         </Button>
       </div>
 
-      <div className="mt-8">
-        <NoteContextPanel contextType="journeyStage" contextId={stage.id} title="Notes about this activity" />
-      </div>
+      {!StructuredForm && (
+        <div className="mt-8">
+          <NoteContextPanel contextType="journeyStage" contextId={stage.id} title="Notes about this activity" />
+        </div>
+      )}
 
       {/* Sibling activities: any of them can be worked on at any time. */}
       {siblings.length > 0 && (
