@@ -27,6 +27,8 @@ import {
   journeyStageProgress,
   overallProgress,
   readinessByArea,
+  recommendedActivity,
+  upNextStage,
   type ActivityProgress,
 } from "./progress";
 import { nextActions } from "./next-actions";
@@ -530,5 +532,34 @@ describe("journey stages", () => {
     expect(overallProgress(baseSnapshot()).focusStage?.id).toBe("get-ready");
     const s = baseSnapshot({ actions: [actionRow(getStage("preapproval")!.actions[0].id, "in-progress")] });
     expect(overallProgress(s).focusStage?.id).toBe("buying-power");
+  });
+
+  it("recommends an activity already underway, else the first not started, else nothing", () => {
+    const stage = JOURNEY_STAGES.find((st) => st.id === "get-ready")!;
+    const build = (statuses: Record<string, ActivityProgress["status"]>) => {
+      const base = baseSnapshot();
+      const activities = stage.activityIds.map((id) => ({
+        ...activityProgress(getStage(id)!, base),
+        status: statuses[id] ?? "not-started",
+      })) as ActivityProgress[];
+      return journeyStageProgress(stage, activities);
+    };
+
+    expect(recommendedActivity(build({}))?.activity.id).toBe("strategy");
+    expect(recommendedActivity(build({ strategy: "completed" }))?.activity.id).toBe("finances");
+    // Underway work wins over an earlier not-started activity.
+    expect(recommendedActivity(build({ strategy: "completed", "home-preferences": "in-progress" }))?.activity.id).toBe(
+      "home-preferences",
+    );
+    const all = Object.fromEntries(stage.activityIds.map((id) => [id, "completed"])) as Record<string, ActivityProgress["status"]>;
+    expect(recommendedActivity(build(all))).toBeUndefined();
+  });
+
+  it("points Up next at the next incomplete stage after the selected one", () => {
+    const p = overallProgress(baseSnapshot());
+    expect(upNextStage(p.stages, "get-ready")?.stage.id).toBe("buying-power");
+    expect(upNextStage(p.stages, "close")).toBeUndefined();
+    const done = p.stages.map((sp) => (sp.stage.id === "buying-power" ? { ...sp, status: "completed" as const } : sp));
+    expect(upNextStage(done, "get-ready")?.stage.id).toBe("team-search-plan");
   });
 });

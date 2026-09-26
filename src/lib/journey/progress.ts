@@ -153,6 +153,26 @@ export function journeyStageProgress(stage: JourneyStage, activities: ActivityPr
   };
 }
 
+/**
+ * A suggestion — never a requirement — for which activity in a Stage to open
+ * next: one already underway if there is one (pick up where you left off),
+ * otherwise the first one not yet started, in the Stage's listed order.
+ * Undefined once every activity in the Stage is settled.
+ */
+export function recommendedActivity(sp: JourneyStageProgress): ActivityProgress | undefined {
+  const open = sp.activities.filter((ap) => !SETTLED_STATUSES.includes(ap.status));
+  return open.find((ap) => ap.status !== "not-started") ?? open[0];
+}
+
+/**
+ * The next Stage after `selectedId` that is not yet complete, for an "Up next"
+ * pointer. Purely a convenience — every Stage is always open to the household.
+ */
+export function upNextStage(stages: JourneyStageProgress[], selectedId: string): JourneyStageProgress | undefined {
+  const index = stages.findIndex((sp) => sp.stage.id === selectedId);
+  return stages.slice(index + 1).find((sp) => sp.status !== "completed");
+}
+
 export interface OverallProgress {
   /** Weighted 0–1 across every activity. */
   fraction: number;
