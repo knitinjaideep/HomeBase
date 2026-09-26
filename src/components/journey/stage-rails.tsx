@@ -4,6 +4,8 @@ import { JOURNEY_STAGES } from "@/lib/guide";
 import type { ActivityProgress, JourneyStageProgress } from "@/lib/journey/progress";
 import { Panel } from "@/components/ui";
 import { StatusPill } from "@/components/journey/journey-ui";
+import { FactList } from "@/components/journey/known-facts";
+import type { JourneyFact } from "@/lib/journey/facts";
 
 /** The right-hand rail on the Journey overview: every Stage at a glance. */
 export function JourneyOverviewRail({
@@ -97,7 +99,7 @@ export function UpNextCard({ sp }: { sp: JourneyStageProgress }) {
 }
 
 /** Stage page rail: the Stage summarised, with the same derived numbers. */
-export function StageSummaryCard({ sp }: { sp: JourneyStageProgress }) {
+export function StageSummaryCard({ sp, facts = [] }: { sp: JourneyStageProgress; facts?: JourneyFact[] }) {
   const pct = Math.round(sp.fraction * 100);
   return (
     <Panel className="p-4 sm:p-5">
@@ -124,6 +126,12 @@ export function StageSummaryCard({ sp }: { sp: JourneyStageProgress }) {
       >
         <div className={cn("h-full rounded-full", sp.status === "completed" ? "bg-positive" : "bg-accent")} style={{ width: `${pct}%` }} />
       </div>
+      {sp.status === "completed" && facts.length > 0 && (
+        <div className="mt-5 border-t border-line pt-4">
+          <h3 className="mb-2 font-display text-base text-ink">What you decided</h3>
+          <FactList facts={facts} />
+        </div>
+      )}
     </Panel>
   );
 }

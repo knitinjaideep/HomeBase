@@ -1,4 +1,5 @@
 import { monthLabel } from "@/lib/format";
+import { getStage } from "@/lib/guide";
 import type { JourneySnapshot } from "./snapshot";
 import { readActivityResponses } from "./activity-responses";
 import { townNames } from "./towns";
@@ -29,14 +30,50 @@ function compactList(items: string[], max = 3): string {
  * value is simply left out.
  */
 export interface JourneyFact {
-  id: "timeline" | "towns" | "backupTowns" | "homeType" | "mustHaves" | "budget" | "ownership" | "bedrooms" | "schools" | "commute";
+  id:
+    | "timeline"
+    | "towns"
+    | "backupTowns"
+    | "homeType"
+    | "mustHaves"
+    | "budget"
+    | "payment"
+    | "ownership"
+    | "bedrooms"
+    | "bathrooms"
+    | "schools"
+    | "commute";
   label: string;
   value: string;
-  /** Where the household can change or review it. */
-  href: string;
-  /** The activity this answer belongs to, so a Stage can show only its own. */
+  /** The activity that owns this answer — where the household can change it. */
   activityId: string;
+  /** That activity's short name ("Towns"), for "from …" attribution. */
+  source: string;
+  /** The activity page to edit it on. */
+  href: string;
+  /** A stable key for choosing an icon. */
+  icon: "calendar" | "map" | "home" | "money" | "clock" | "school" | "car" | "list";
+  /** Display order; lower comes first. */
+  priority: number;
 }
+
+type FactInput = Omit<JourneyFact, "source" | "href" | "priority">;
+
+/** Display order of facts, most decision-shaping first. */
+const FACT_PRIORITY: Record<JourneyFact["id"], number> = {
+  timeline: 10,
+  budget: 20,
+  payment: 30,
+  ownership: 40,
+  towns: 50,
+  backupTowns: 60,
+  homeType: 70,
+  bedrooms: 80,
+  bathrooms: 90,
+  mustHaves: 100,
+  schools: 110,
+  commute: 120,
+};
 
 /** $1,150,000 → "$1.15M", $950,000 → "$950K". Compact, for one-line display. */
 function compactMoney(value: number): string {
@@ -50,19 +87,33 @@ function trimZero(text: string): string {
   return text.includes(".") ? text.replace(/\.?0+$/, "") : text;
 }
 
+/** Attach the owning activity's name and edit route, and the display order. */
+function withMeta(fact: FactInput): JourneyFact {
+  return {
+    ...fact,
+    source: getStage(fact.activityId)?.shortTitle ?? fact.activityId,
+    href: `/journey/${fact.activityId}`,
+    priority: FACT_PRIORITY[fact.id],
+  };
+}
+
+/**
+ * The reusable fact list, derived from one snapshot: ordered, with each fact
+ * pointing at the activity that owns it. A missing answer yields no fact.
+ */
 export function journeyFacts(s: JourneySnapshot): JourneyFact[] {
-  const facts: JourneyFact[] = [];
+  const inputs: FactInput[] = [];
   const { household, financial, preferences } = s;
 
   if (household.idealPurchaseStart && household.idealPurchaseEnd) {
     const start = monthLabel(household.idealPurchaseStart);
     const end = monthLabel(household.idealPurchaseEnd);
-    facts.push({
+    inputs.push({
       id: "timeline",
       activityId: "strategy",
+      icon: "calendar",
       label: "Target timeline",
       value: start === end ? start : `${start} – ${end}`,
-      href: "/settings",
     });
   }
 
@@ -70,100 +121,92 @@ export function journeyFacts(s: JourneySnapshot): JourneyFact[] {
   const primaryTowns = townRows.primary.length > 0 ? townRows.primary : preferences.primaryTowns;
   const backupTowns = townRows.backup.length > 0 ? townRows.backup : preferences.backupTowns;
   if (primaryTowns.length > 0) {
-    facts.push({
-      id: "towns",
-      activityId: "town-research",
-      label: "Primary towns",
-      value: primaryTowns.join(", "),
-      href: "/journey/town-research",
-    });
+    inputs.push({ id: "towns", activityId: "town-research", icon: "map", label: "Primary towns", value: primaryTowns.join(", ") });
   }
   if (backupTowns.length > 0) {
-    facts.push({
-      id: "backupTowns",
-      activityId: "town-research",
-      label: "Backup towns",
-      value: backupTowns.join(", "),
-      href: "/journey/town-research",
-    });
+    inputs.push({ id: "backupTowns", activityId: "town-research", icon: "map", label: "Backup towns", value: backupTowns.join(", ") });
   }
 
   const min = financial.priceComfortableMin;
   const max = financial.priceComfortableMax;
   if (typeof min === "number" && typeof max === "number" && max > 0) {
-    facts.push({
+    inputs.push({
       id: "budget",
       activityId: "finances",
+      icon: "money",
       label: "Comfortable price range",
       value: `${compactMoney(min)} – ${compactMoney(max)}`,
-      href: "/settings",
+    });
+  }
+
+  if (typeof financial.paymentComfortable === "number" && financial.paymentComfortable > 0) {
+    inputs.push({
+      id: "payment",
+      activityId: "finances",
+      icon: "money",
+      label: "Comfortable monthly payment",
+      value: `$${Math.round(financial.paymentComfortable).toLocaleString("en-US")}/mo`,
     });
   }
 
   if (household.minOwnershipYears > 0) {
-    facts.push({
+    inputs.push({
       id: "ownership",
       activityId: "strategy",
+      icon: "clock",
       label: "Plan to stay",
       value: `${household.minOwnershipYears}+ years`,
-      href: "/settings",
     });
   }
 
   const types = homeTypeLabels(s);
   if (types.length > 0) {
-    facts.push({
-      id: "homeType",
-      activityId: "home-preferences",
-      label: "Home type",
-      value: types.join(", "),
-      href: "/journey/home-preferences",
-    });
+    inputs.push({ id: "homeType", activityId: "home-preferences", icon: "home", label: "Home type", value: types.join(", ") });
   }
 
   const responses = homePreferenceResponses(s);
-  const mustHaves = labelsFor(MUST_HAVE_PRESETS, responses.mustHave ?? [], responses.mustHaveCustom ?? []);
+  const schoolsRecorded = preferences.minSchoolRating > 0;
+  // "Good schools" as a must-have and the school threshold say the same thing;
+  // show the threshold (more specific) and drop the duplicate.
+  const mustHaveIds = schoolsRecorded ? (responses.mustHave ?? []).filter((id) => id !== "good-schools") : (responses.mustHave ?? []);
+  const mustHaves = labelsFor(MUST_HAVE_PRESETS, mustHaveIds, responses.mustHaveCustom ?? []);
   if (mustHaves.length > 0) {
-    facts.push({
-      id: "mustHaves",
-      activityId: "home-preferences",
-      label: "Must-haves",
-      value: compactList(mustHaves),
-      href: "/journey/home-preferences",
-    });
+    inputs.push({ id: "mustHaves", activityId: "home-preferences", icon: "list", label: "Must-haves", value: compactList(mustHaves) });
   }
 
   if (preferences.minBedrooms > 0) {
-    facts.push({
-      id: "bedrooms",
-      activityId: "home-preferences",
-      label: "Bedrooms",
-      value: `${preferences.minBedrooms}+ beds`,
-      href: "/journey/home-preferences",
-    });
+    inputs.push({ id: "bedrooms", activityId: "home-preferences", icon: "home", label: "Bedrooms", value: `${preferences.minBedrooms}+` });
+  }
+  if (preferences.minBathrooms > 0) {
+    inputs.push({ id: "bathrooms", activityId: "home-preferences", icon: "home", label: "Bathrooms", value: `${preferences.minBathrooms}+` });
   }
 
-  if (preferences.minSchoolRating > 0) {
-    facts.push({
+  if (schoolsRecorded) {
+    inputs.push({
       id: "schools",
       activityId: "school-priorities",
+      icon: "school",
       label: "School threshold",
       value: `Rating ${preferences.minSchoolRating}+`,
-      href: "/journey/school-priorities",
     });
   }
 
   if (preferences.maxCommuteMinutes > 0) {
-    facts.push({
-      id: "commute",
-      activityId: "commute",
-      label: "Max commute",
-      value: `${preferences.maxCommuteMinutes} min`,
-      href: "/journey/commute",
-    });
+    inputs.push({ id: "commute", activityId: "commute", icon: "car", label: "Max commute", value: `${preferences.maxCommuteMinutes} min` });
   }
 
-  return facts;
+  return dedupeFacts(inputs.map(withMeta)).sort((x, y) => x.priority - y.priority);
+}
+
+/** Drop any fact whose label and value repeat one already listed. */
+function dedupeFacts(facts: JourneyFact[]): JourneyFact[] {
+  const seen = new Set<string>();
+  return facts.filter((f) => {
+    const key = `${f.label}|${f.value}`.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /** Activities that record answers shown under "What we know so far". */

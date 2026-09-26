@@ -29,7 +29,9 @@ export function JourneyStageView({ stage, s }: { stage: JourneyStage; s: Journey
   // Only answers recorded in this Stage's activities. Stages whose activities
   // record no such answers omit the panel rather than show an empty one.
   const stageFacts = factsForStage(facts, stage.activityIds);
-  const showFacts = stageFacts.length > 0 || FACT_ACTIVITY_IDS.some((id) => stage.activityIds.includes(id));
+  // A completed Stage lists its facts inside the Stage overview card instead.
+  const completedWithFacts = sp.status === "completed" && stageFacts.length > 0;
+  const showFacts = !completedWithFacts && (stageFacts.length > 0 || FACT_ACTIVITY_IDS.some((id) => stage.activityIds.includes(id)));
 
   return (
     <div>
@@ -58,7 +60,7 @@ export function JourneyStageView({ stage, s }: { stage: JourneyStage; s: Journey
         </div>
 
         <aside className="mt-6 space-y-6 lg:sticky lg:top-24 lg:mt-0">
-          <StageSummaryCard sp={sp} />
+          <StageSummaryCard sp={sp} facts={stageFacts} />
           {showFacts && <KnownFacts facts={stageFacts} />}
           <RecommendedNextCard recommended={recommended} />
         </aside>

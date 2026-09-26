@@ -12,12 +12,13 @@ function snapshot(overrides: {
 }): JourneySnapshot {
   return {
     household: { idealPurchaseStart: "2027-05", idealPurchaseEnd: "2027-06", minOwnershipYears: 0, ...overrides.household },
-    financial: { priceComfortableMin: null, priceComfortableMax: null, ...overrides.financial },
+    financial: { priceComfortableMin: null, priceComfortableMax: null, paymentComfortable: null, ...overrides.financial },
     preferences: {
       primaryTowns: [],
       backupTowns: [],
       minBedrooms: 0,
       minSchoolRating: 0,
+      minBathrooms: 0,
       maxCommuteMinutes: 0,
       ...overrides.preferences,
     },
@@ -83,7 +84,7 @@ describe("journeyFacts", () => {
         }),
       ),
     );
-    expect(facts).toMatchObject({ ownership: "10+ years", bedrooms: "4+ beds", schools: "Rating 8+", commute: "60 min" });
+    expect(facts).toMatchObject({ ownership: "10+ years", bedrooms: "4+", schools: "Rating 8+", commute: "60 min" });
     const blank = byId(journeyFacts(snapshot({})));
     expect(blank.bedrooms).toBeUndefined();
     expect(blank.schools).toBeUndefined();
@@ -109,5 +110,64 @@ describe("stage workspace helpers", () => {
     expect(out["commute"]).toBe("≤ 60 min");
     expect(out["school-priorities"]).toBeUndefined();
     expect(out["finances"]).toBeUndefined();
+  });
+});
+
+describe("journey fact layer", () => {
+  const full = () =>
+    snapshot({
+      household: { minOwnershipYears: 10 },
+      financial: { priceComfortableMin: 900_000, priceComfortableMax: 1_200_000, paymentComfortable: 6500 },
+      preferences: {
+        primaryTowns: ["Princeton"],
+        backupTowns: ["Summit"],
+        minBedrooms: 4,
+        minBathrooms: 2.5,
+        minSchoolRating: 8,
+        maxCommuteMinutes: 45,
+      },
+      stageStates: [
+        {
+          id: "home-preferences",
+          responses: { homeTypes: ["single-family"], mustHave: ["garage", "good-schools"] },
+        },
+      ],
+    });
+
+  it("returns nothing for an empty plan, so the UI can show its calm empty state", () => {
+    expect(journeyFacts(snapshot({ household: { idealPurchaseStart: "", idealPurchaseEnd: "" } }))).toEqual([]);
+  });
+
+  it("returns only what is recorded for a partial plan", () => {
+    const ids = journeyFacts(snapshot({ preferences: { minBedrooms: 3 } })).map((f) => f.id);
+    expect(ids).toEqual(["timeline", "bedrooms"]);
+  });
+
+  it("returns every fact for a full plan, in priority order, each owned by an activity route", () => {
+    const facts = journeyFacts(full());
+    expect(facts.map((f) => f.id)).toEqual([
+      "timeline", "budget", "payment", "ownership", "towns", "backupTowns",
+      "homeType", "bedrooms", "bathrooms", "mustHaves", "schools", "commute",
+    ]);
+    expect(facts.every((f) => f.href === `/journey/${f.activityId}` && f.source.length > 0)).toBe(true);
+    expect(facts.find((f) => f.id === "payment")).toMatchObject({ value: "$6,500/mo", activityId: "finances" });
+    expect(facts.find((f) => f.id === "bedrooms")).toMatchObject({ activityId: "home-preferences", value: "4+" });
+    expect(facts.find((f) => f.id === "bathrooms")?.value).toBe("2.5+");
+    expect(facts.find((f) => f.id === "towns")?.href).toBe("/journey/town-research");
+  });
+
+  it("does not repeat the school priority as a must-have", () => {
+    const mustHaves = journeyFacts(full()).find((f) => f.id === "mustHaves");
+    expect(mustHaves?.value).toBe("Garage");
+    const noThreshold = snapshot({ stageStates: [{ id: "home-preferences", responses: { mustHave: ["good-schools"] } }] });
+    expect(journeyFacts(noThreshold).find((f) => f.id === "mustHaves")?.value).toBe("Good schools");
+  });
+
+  it("follows edits and removals", () => {
+    const before = byId(journeyFacts(snapshot({ preferences: { minBedrooms: 3, maxCommuteMinutes: 30 } })));
+    expect(before).toMatchObject({ bedrooms: "3+", commute: "30 min" });
+    const after = byId(journeyFacts(snapshot({ preferences: { minBedrooms: 4, maxCommuteMinutes: 0 } })));
+    expect(after.bedrooms).toBe("4+");
+    expect(after.commute).toBeUndefined();
   });
 });
