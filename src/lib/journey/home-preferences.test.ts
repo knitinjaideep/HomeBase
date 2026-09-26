@@ -16,6 +16,7 @@ function snapshot(over: { preferences?: object; responses?: object; dealbreakerN
     financial: { priceComfortableMin: null, priceComfortableMax: null },
     preferences: {
       primaryTowns: [],
+      backupTowns: [],
       minBedrooms: 0,
       minBathrooms: 0,
       minSchoolRating: 0,

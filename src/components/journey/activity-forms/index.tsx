@@ -3,6 +3,7 @@ import type { GuideActivity } from "@/lib/guide";
 import type { JourneySnapshot } from "@/lib/journey/snapshot";
 import { CommuteActivity } from "./commute-activity";
 import { HomePreferencesActivity } from "./home-preferences-activity";
+import { TownsActivity } from "./towns-activity";
 
 /**
  * Structured, activity-specific forms.
@@ -36,4 +37,5 @@ export interface ActivityFormProps {
 export const ACTIVITY_FORMS: Partial<Record<string, ComponentType<ActivityFormProps>>> = {
   commute: CommuteActivity,
   "home-preferences": HomePreferencesActivity,
+  "town-research": TownsActivity,
 };

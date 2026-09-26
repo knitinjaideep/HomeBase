@@ -1,6 +1,7 @@
 import { monthLabel } from "@/lib/format";
 import type { JourneySnapshot } from "./snapshot";
 import { readActivityResponses } from "./activity-responses";
+import { townNames } from "./towns";
 import { HOME_TYPES, MUST_HAVE_PRESETS, labelsFor } from "./home-preferences";
 
 /** What the household has recorded in the structured Home preferences form. */
@@ -28,7 +29,7 @@ function compactList(items: string[], max = 3): string {
  * value is simply left out.
  */
 export interface JourneyFact {
-  id: "timeline" | "towns" | "homeType" | "mustHaves" | "budget" | "ownership" | "bedrooms" | "schools" | "commute";
+  id: "timeline" | "towns" | "backupTowns" | "homeType" | "mustHaves" | "budget" | "ownership" | "bedrooms" | "schools" | "commute";
   label: string;
   value: string;
   /** Where the household can change or review it. */
@@ -65,14 +66,24 @@ export function journeyFacts(s: JourneySnapshot): JourneyFact[] {
     });
   }
 
-  const primaryTownNames = s.towns.filter((t) => t.designation === "primary").map((t) => t.name);
-  const towns = primaryTownNames.length > 0 ? primaryTownNames : preferences.primaryTowns;
-  if (towns.length > 0) {
+  const townRows = { primary: townNames(s.towns, "primary"), backup: townNames(s.towns, "backup") };
+  const primaryTowns = townRows.primary.length > 0 ? townRows.primary : preferences.primaryTowns;
+  const backupTowns = townRows.backup.length > 0 ? townRows.backup : preferences.backupTowns;
+  if (primaryTowns.length > 0) {
     facts.push({
       id: "towns",
       activityId: "town-research",
       label: "Primary towns",
-      value: towns.join(", "),
+      value: primaryTowns.join(", "),
+      href: "/journey/town-research",
+    });
+  }
+  if (backupTowns.length > 0) {
+    facts.push({
+      id: "backupTowns",
+      activityId: "town-research",
+      label: "Backup towns",
+      value: backupTowns.join(", "),
       href: "/journey/town-research",
     });
   }

@@ -48,7 +48,15 @@ export type TownDesignation = z.infer<typeof townDesignationSchema>;
 /** Research notes for a town under consideration. */
 export const townResearchSchema = baseEntitySchema.extend({
   name: z.string().min(1),
+  /** Two-letter US state; "" when unknown (rows created before states were recorded). */
+  state: z.string().default(""),
+  /** Canonical id from the bundled town reference list, or null for custom / older rows. */
+  refId: z.string().nullable().default(null),
+  /** A location the household typed in because it is not in the reference list. */
+  isCustom: z.boolean().default(false),
   designation: townDesignationSchema.default("considering"),
+  /** Optional 1-based order within its designation; null = not ranked. */
+  priority: z.number().int().positive().nullable().default(null),
   whyConsidering: z.string().default(""),
 
   // Money

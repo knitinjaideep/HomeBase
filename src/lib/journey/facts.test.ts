@@ -15,6 +15,7 @@ function snapshot(overrides: {
     financial: { priceComfortableMin: null, priceComfortableMax: null, ...overrides.financial },
     preferences: {
       primaryTowns: [],
+      backupTowns: [],
       minBedrooms: 0,
       minSchoolRating: 0,
       maxCommuteMinutes: 0,
@@ -59,6 +60,18 @@ describe("journeyFacts", () => {
     });
     expect(byId(journeyFacts(researched)).towns).toBe("Princeton, West Windsor");
     expect(byId(journeyFacts(snapshot({ preferences: { primaryTowns: ["Montclair"] } }))).towns).toBe("Montclair");
+  });
+
+  it("lists backup towns in the household's order, falling back to the preference list", () => {
+    const s = snapshot({
+      towns: [
+        { name: "Hopewell", designation: "backup", priority: 2 },
+        { name: "Montgomery", designation: "backup", priority: 1 },
+      ],
+    });
+    expect(byId(journeyFacts(s)).backupTowns).toBe("Montgomery, Hopewell");
+    expect(byId(journeyFacts(snapshot({ preferences: { backupTowns: ["Summit"] } }))).backupTowns).toBe("Summit");
+    expect(byId(journeyFacts(snapshot({}))).backupTowns).toBeUndefined();
   });
 
   it("reports preference thresholds only when they are above zero", () => {
