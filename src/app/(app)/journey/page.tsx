@@ -41,7 +41,7 @@ function JourneyOverview({ s }: { s: JourneySnapshot }) {
   return (
     <div>
       <JourneyHero eyebrow="Your home journey" title="Home Journey">
-        Buy with clarity. Turn a complex process into a clear plan, at your own pace.
+        Buy with clarity. Turn a complex process into a clear plan, one stage at a time.
       </JourneyHero>
 
       <div className="rounded-xl border border-line bg-surface px-3 py-4 sm:px-6 sm:py-5">

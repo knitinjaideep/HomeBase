@@ -101,7 +101,7 @@ function ActivityChip({ ap, recommended }: { ap: ActivityProgress; recommended: 
     <Link
       href={`/journey/${ap.activity.id}`}
       className={cn(
-        "flex min-h-[2.75rem] items-center gap-2.5 rounded-lg border px-3 text-sm hover:border-accent/50",
+        "flex min-h-[3.25rem] items-center gap-2.5 rounded-lg border px-3 py-2 text-sm hover:border-accent/50",
         recommended ? "border-[color:var(--mode-accent-border)] bg-mode-accent-muted/40" : "border-line bg-surface",
       )}
     >
@@ -118,8 +118,12 @@ function ActivityChip({ ap, recommended }: { ap: ActivityProgress; recommended: 
       >
         {done ? "✓" : underway ? "•" : "○"}
       </span>
-      <span className="min-w-0 flex-1 truncate text-ink">{ap.activity.shortTitle}</span>
-      <span className="sr-only">{done ? "completed" : underway ? "in progress" : "not started"}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-ink">{ap.activity.shortTitle}</span>
+        <span className="block text-xs text-ink-subtle">
+          {done ? "Complete" : underway ? `In progress · ${ap.actionsDone} of ${ap.actionsTotal} steps` : "Not started"}
+        </span>
+      </span>
       <span aria-hidden className="text-ink-subtle">
         ›
       </span>
