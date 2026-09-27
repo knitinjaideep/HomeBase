@@ -22,7 +22,8 @@ test("buyer: path selection through converting a purchased home into HomeBase", 
   });
 
   await test.step("Complete a checklist item", async () => {
-    await page.getByRole("link", { name: /Start this step|Continue/ }).click();
+    // Activities are parallel — open any one from the Journey overview.
+    await page.getByRole("link", { name: /^Strategy/ }).first().click();
     // Cycles not-started -> in-progress -> completed; wait for each persisted
     // state to land (the click handler closes over render-time status) before
     // clicking again, so the second click doesn't re-send the same transition.

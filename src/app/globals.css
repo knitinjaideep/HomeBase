@@ -341,6 +341,25 @@ body {
   box-shadow: 0 8px 20px -8px rgb(var(--ink) / 0.12), 0 0 0 1px var(--mode-accent-border);
 }
 
+/* Decorative illustration for the Journey hero. A CSS background with the
+   image swapped by the existing `.dark` class (same pattern as .hs-app-backdrop),
+   so only the active theme's image is ever fetched. The left edge fades out so
+   it never sits behind the heading text. */
+.hs-journey-art {
+  --journey-art: url("/images/homescope/illustrations/buyer/buyer-light.webp");
+  background-image: var(--journey-art);
+  background-size: cover;
+  background-position: 60% center;
+  background-repeat: no-repeat;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 55%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 55%);
+  pointer-events: none;
+}
+
+.dark .hs-journey-art {
+  --journey-art: url("/images/homescope/illustrations/buyer/buyer-dark.webp");
+}
+
 /* Print: hide chrome, show only the report content. */
 @media print {
   .no-print {

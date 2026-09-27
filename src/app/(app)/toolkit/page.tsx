@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useMaintenanceItems, useRepairProjects } from "@/lib/hooks";
 import { useJourneySnapshot } from "@/lib/journey/use-snapshot";
 import { overallProgress } from "@/lib/journey/progress";
-import { phaseForStage } from "@/lib/guide/phases";
 import { getMaintenanceUrgency } from "@/lib/maintenance/schedule";
 import { useActiveMode } from "@/lib/workspace/mode-context";
 import { toolkitGroupsForMode } from "@/lib/toolkit/groups";
@@ -43,7 +42,7 @@ export default function ToolkitPage() {
           mode,
           buyer: snapshot
             ? {
-                currentStagePhaseId: phaseForStage(overallProgress(snapshot).currentStage.id).id,
+                focusStageId: overallProgress(snapshot).focusStage?.id,
                 hasApprovals: snapshot.approvals.length > 0,
                 shortlistedPropertyCount: snapshot.properties.filter((p) => p.status === "shortlisted").length,
               }

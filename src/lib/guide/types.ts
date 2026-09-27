@@ -6,7 +6,17 @@ import type { Owner } from "@/lib/models";
  * the stable ids below, so guide wording can be revised without losing state.
  */
 
-/** Stable stage ids. Never rename one; add a new stage instead. */
+/**
+ * Stable ids of the guide's content units. Never rename one; add a new one
+ * instead.
+ *
+ * TERMINOLOGY: the product hierarchy is Journey → Stage → Activity (see
+ * `journey-stages.ts` for the six broad Stages). Historically these content
+ * units were called "stages", so the code keeps `GuideStage`, `StageId`, the
+ * `journeyStages` table, and `stageId` columns — those names all mean
+ * *activity* now. They are left as-is on purpose: persisted state is keyed by
+ * these ids, and renaming them would risk existing households' data.
+ */
 export const STAGE_IDS = [
   "strategy",
   "finances",
@@ -26,8 +36,15 @@ export const STAGE_IDS = [
   "financing",
   "closing-prep",
   "closing",
+  // Carved out of "strategy" when Stages became parallel-activity groups.
+  "home-preferences",
+  "school-priorities",
+  "commute",
 ] as const;
 export type StageId = (typeof STAGE_IDS)[number];
+
+/** Preferred name for a `StageId` in new code: the id of an *activity*. */
+export type ActivityId = StageId;
 
 /** The readiness dimensions summarized on the Journey overview. */
 export type ReadinessArea = "financial" | "mortgage" | "team" | "search" | "offer";
@@ -120,8 +137,10 @@ export interface PersonalizationRule {
   text: string;
 }
 
+/** One activity's content (historically called a "stage" — see `STAGE_IDS`). */
 export interface GuideStage {
   id: StageId;
+  /** Legacy display number. No longer shown; ordering is by `order` and the Stage's activity list. */
   number: number;
   title: string;
   /** Short label for nav, timelines, and chips. */
@@ -152,3 +171,6 @@ export interface GuideStage {
   order: number;
   version: number;
 }
+
+/** Preferred name for `GuideStage` in new code. */
+export type GuideActivity = GuideStage;

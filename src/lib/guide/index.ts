@@ -4,7 +4,7 @@ import { TEAM_STAGES } from "./stages/team";
 import { TRANSACTION_STAGES } from "./stages/transaction";
 
 export * from "./types";
-export * from "./phases";
+export * from "./journey-stages";
 
 /** Every stage, in journey order. This is the guide. */
 export const GUIDE_STAGES: GuideStage[] = [

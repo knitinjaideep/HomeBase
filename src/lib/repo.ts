@@ -12,6 +12,8 @@
  * the current household instead of the local database handle.
  */
 
+import { planTownSave, sameTown, type TownSelection } from "@/lib/journey/towns";
+import { parseActivityResponses, type ActivityResponseId } from "@/lib/journey/activity-responses";
 import { createClient } from "./supabase/client";
 import { getCurrentHouseholdId } from "./household/current";
 import { invalidateTable, invalidateTables } from "./data/invalidation";
@@ -366,6 +368,22 @@ export async function deleteTown(id: string): Promise<void> {
   await removeRow("towns", id);
 }
 
+/**
+ * Save the Towns activity: reconcile the household's `towns` rows with the
+ * chosen primary/backup towns (see `planTownSave`), then mirror the names to
+ * `homePreferences` so Settings and the older fallbacks stay in step. Rows are
+ * matched, not duplicated, so retrying after a partial failure is safe.
+ */
+export async function saveTownSelection(existing: TownResearch[], selection: TownSelection): Promise<void> {
+  const plan = planTownSave(existing, selection);
+  for (const town of plan.create) await createTown(town);
+  for (const town of plan.update) await saveTown(town);
+  await updatePreferences({
+    primaryTowns: selection.primary.map((t) => t.name),
+    backupTowns: selection.backup.filter((b) => !selection.primary.some((p) => sameTown(p, b))).map((t) => t.name),
+  });
+}
+
 // ---- Journey --------------------------------------------------------------
 
 /**
@@ -395,6 +413,20 @@ export async function setStageState(
     "journeyStages",
     journeyStageStateSchema.parse({ id: stageId, createdAt: ts, updatedAt: ts, ...patch }),
   );
+}
+
+/**
+ * Save an activity's structured answers (`journeyStages.responses`). The values
+ * are validated with the activity's Zod schema and merged over what is already
+ * stored, so saving one field never discards another.
+ */
+export async function setActivityResponses<K extends ActivityResponseId>(
+  activityId: K,
+  values: Record<string, unknown>,
+  existing: Record<string, unknown> | undefined,
+): Promise<void> {
+  const merged = parseActivityResponses(activityId, { ...(existing ?? {}), ...values });
+  await setStageState(activityId, { responses: merged });
 }
 
 export async function setActionState(

@@ -48,7 +48,17 @@ export type TownDesignation = z.infer<typeof townDesignationSchema>;
 /** Research notes for a town under consideration. */
 export const townResearchSchema = baseEntitySchema.extend({
   name: z.string().min(1),
+  /** Two-letter US state; "" when unknown (rows created before states were recorded). */
+  state: z.string().default(""),
+  /** County, for telling apart same-named townships ("Washington Township, Morris County"). */
+  county: z.string().default(""),
+  /** The Census-backed `geographies` row this location is, or null (custom, or not matched yet). */
+  geographyId: z.string().uuid().nullable().default(null),
+  /** A location the household typed in because no Census geography fit. Never has a geography. */
+  isCustom: z.boolean().default(false),
   designation: townDesignationSchema.default("considering"),
+  /** Optional 1-based order within its designation; null = not ranked. */
+  priority: z.number().int().positive().nullable().default(null),
   whyConsidering: z.string().default(""),
 
   // Money

@@ -46,6 +46,13 @@ export const journeyStageStateSchema = baseEntitySchema.extend({
   notes: z.string().default(""),
   /** Free-text description of what is blocking this stage, if anything. */
   blockerNote: z.string().default(""),
+  /**
+   * Structured, activity-specific answers (JSONB). Left undefined — not
+   * defaulted — so rows written before migration 0029 still parse and inserts
+   * that don't touch it work either way. Validate with the activity's schema in
+   * `lib/journey/activity-responses.ts` before trusting the contents.
+   */
+  responses: z.record(z.string(), z.unknown()).optional(),
 });
 export type JourneyStageState = z.infer<typeof journeyStageStateSchema>;
 

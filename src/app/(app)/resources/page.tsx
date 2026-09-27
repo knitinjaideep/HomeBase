@@ -85,12 +85,12 @@ export default function ResourcesPage() {
       {showAdd && <AddResourceForm onDone={() => setShowAdd(false)} />}
 
       <div className="mb-6 flex flex-wrap items-end gap-3">
-        <Field label="Journey stage" className="w-56">
+        <Field label="Journey activity" className="w-56">
           <Select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)}>
             <option value="all">All stages</option>
             {GUIDE_STAGES.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.number}. {s.shortTitle}
+                {s.shortTitle}
               </option>
             ))}
           </Select>
@@ -312,7 +312,7 @@ function AddResourceForm({ onDone }: { onDone: () => void }) {
             <option value="">None</option>
             {GUIDE_STAGES.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.number}. {s.shortTitle}
+                {s.shortTitle}
               </option>
             ))}
           </Select>
